@@ -24,13 +24,16 @@ SECTIONS = {s["id"]: s for s in SCHEMA["sections"]}
 BY_ID = {s["id"]: s for s in SCHEMA["slots"]}
 REVIEW = "__review__"
 
+SECRET_NAMES: list[str] = []
+SECRET_ERROR: str | None = None
 try:  # hosted platforms supply the key as a secret rather than a .env file
+    SECRET_NAMES = list(st.secrets.keys())
     if "GROQ_API_KEY" in st.secrets:
         os.environ["GROQ_API_KEY"] = st.secrets["GROQ_API_KEY"]
     if "GROQ_CHAT_MODEL" in st.secrets:
         os.environ["GROQ_CHAT_MODEL"] = st.secrets["GROQ_CHAT_MODEL"]
-except Exception:
-    pass
+except Exception as exc:
+    SECRET_ERROR = f"{type(exc).__name__}: {exc}"
 
 st.html("""
 <style>
@@ -242,9 +245,16 @@ with st.sidebar:
     st.subheader("Source onboarding")
 
     if not os.getenv("GROQ_API_KEY"):
+        detail = ""
+        if SECRET_ERROR:
+            detail = f"\n\nSecrets could not be read — {SECRET_ERROR}"
+        elif SECRET_NAMES:
+            detail = "\n\nSecrets loaded, but found: " + ", ".join(SECRET_NAMES)
+        else:
+            detail = "\n\nNo secrets file was found at all."
         st.warning(
             "No GROQ_API_KEY set — the docs explainer will show raw documentation "
-            "excerpts instead of a written answer.",
+            "excerpts instead of a written answer." + detail,
             icon=":material/key_off:",
         )
 
