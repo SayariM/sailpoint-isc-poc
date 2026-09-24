@@ -1,0 +1,7 @@
+.env
+.venv/
+.chroma/
+state/
+out/
+__pycache__/
+*.pyc
