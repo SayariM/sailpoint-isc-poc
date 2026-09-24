@@ -9,6 +9,7 @@ from typing import Any
 
 import streamlit as st
 
+import excel_export
 import interview
 
 st.set_page_config(
@@ -367,6 +368,43 @@ if page == REVIEW:
 
     with st.expander("Preview document"):
         st.markdown(markdown)
+
+    st.divider()
+    st.subheader("Final submission")
+
+    outstanding = [s for s in interview.pending(SCHEMA, state, audience) if s.get("required")]
+    submitted = state.get("submitted_at")
+
+    if submitted:
+        st.success(f"Submitted {submitted}. Re-submit to refresh after any changes.")
+
+    if outstanding:
+        st.warning(
+            f"{len(outstanding)} required question(s) still unanswered. "
+            "They will be listed in the workbook as gaps.",
+            icon=":material/error:",
+        )
+        with st.expander(f"Show the {len(outstanding)} outstanding question(s)"):
+            for slot in outstanding:
+                st.markdown(f"- {SECTIONS[slot['section']]['name']} — {slot['question']}")
+        allow = st.checkbox("Submit anyway, with the gaps recorded")
+    else:
+        allow = True
+
+    if st.button("Submit and generate Excel", type="primary", disabled=not allow):
+        state["submitted_at"] = now()
+        interview.save_state(state)
+        st.session_state["xlsx"] = excel_export.build(SCHEMA, state)
+        st.rerun()
+
+    if st.session_state.get("xlsx"):
+        st.download_button(
+            "Download Excel workbook",
+            st.session_state["xlsx"],
+            file_name=f"{state['slug']}-onboarding.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            type="primary",
+        )
 
     if st.button("← Back to questions"):
         goto(nav - 1)
