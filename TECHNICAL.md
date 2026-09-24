@@ -288,7 +288,61 @@ domain knowledge.
 
 ---
 
-## 12. Component reference
+## 12. Technology stack
+
+Versions as installed.
+
+### AI / ML
+
+| Component | Version | Role |
+| --- | --- | --- |
+| sentence-transformers | 6.1.0 | Runs the local embedding model |
+| all-MiniLM-L6-v2 | — | ~22M parameters, 384-dimensional vectors |
+| torch | 2.14.0 | CPU inference backend for the embedder |
+| transformers | 5.17.0 | Model loading |
+| tokenizers | 0.23.2 | Tokenisation |
+| groq | 0.37.1 | Hosted LLM client |
+| openai/gpt-oss-120b | — | 117B MoE open-weight model, 128k context |
+
+### Vector store
+
+| Component | Version | Role |
+| --- | --- | --- |
+| chromadb | 1.5.9 | Embedded vector database persisted to `.chroma/` |
+| numpy | 2.5.3 | Vector maths |
+| onnxruntime | 1.30.0 | Chroma dependency |
+
+### Orchestration
+
+| Component | Version | Role |
+| --- | --- | --- |
+| langchain-core | 1.6.4 | `Document`, `ChatPromptTemplate`, LCEL piping |
+| langchain-text-splitters | 1.1.2 | `RecursiveCharacterTextSplitter` |
+| langchain-chroma | 1.1.0 | Chroma integration |
+| langchain-huggingface | 1.2.2 | Embeddings integration |
+| langchain-groq | 1.1.3 | `ChatGroq` client |
+| langchain | 1.4.2 | Umbrella package |
+
+### Application
+
+| Component | Version | Role |
+| --- | --- | --- |
+| streamlit | 1.64.0 | Web UI, session state, secrets |
+| openpyxl | 3.1.5 | Excel workbook generation |
+| pymupdf | 1.28.2 | PDF text extraction |
+| python-dotenv | 1.2.3 | Loads `.env` |
+| truststore | 0.10.4 | Optional — Windows cert store for TLS-inspecting proxies |
+
+### Runtime
+
+Python 3.14.1 locally, 3.12 recommended for deployment. Persistence is flat JSON
+with no database, message queue or cache. Chroma is embedded rather than a
+server, which is why deployment is a `git push` — and why state does not survive
+a container restart.
+
+---
+
+## 13. Component reference
 
 | Function | Module | Notes |
 | --- | --- | --- |
