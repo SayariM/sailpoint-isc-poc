@@ -27,6 +27,8 @@ REVIEW = "__review__"
 try:  # hosted platforms supply the key as a secret rather than a .env file
     if "GROQ_API_KEY" in st.secrets:
         os.environ["GROQ_API_KEY"] = st.secrets["GROQ_API_KEY"]
+    if "GROQ_CHAT_MODEL" in st.secrets:
+        os.environ["GROQ_CHAT_MODEL"] = st.secrets["GROQ_CHAT_MODEL"]
 except Exception:
     pass
 
