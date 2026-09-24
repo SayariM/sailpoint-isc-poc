@@ -693,6 +693,49 @@
       "grounding": "web services HTTP operations context URL HTTP method operation type"
     },
     {
+      "id": "ws_operation_matrix",
+      "section": "connectivity",
+      "audience": "owner",
+      "question": "For each operation, give the endpoint path and mark whether it is required.",
+      "hint": "Leave a row blank if the API does not support that operation.",
+      "why": "Every ISC operation is configured separately with its own URL, method and body.",
+      "type": "table",
+      "row_label": "Operation",
+      "rows": [
+        "Test Connection",
+        "Account Aggregation",
+        "Account Delta Aggregation",
+        "Group Aggregation",
+        "Get Object",
+        "Get Object-Group",
+        "Create Account",
+        "Update Account",
+        "Delete Account",
+        "Enable Account",
+        "Disable Account",
+        "Unlock Account",
+        "Change Password",
+        "Add Entitlement",
+        "Remove Entitlement",
+        "Partitioned Account Aggregation"
+      ],
+      "columns": [
+        "Context URL",
+        "Sample Request",
+        "Sample Response",
+        "Required?"
+      ],
+      "required": true,
+      "applies_to": {
+        "integration_methods": [
+          "SCIM 2.0 API",
+          "REST / JSON API",
+          "SOAP / XML API"
+        ]
+      },
+      "grounding": "web services HTTP operations context URL required"
+    },
+    {
       "id": "ws_sample_response",
       "section": "connectivity",
       "audience": "owner",
@@ -1065,6 +1108,29 @@
       "required": true
     },
     {
+      "id": "uar_field_matrix",
+      "section": "accounts",
+      "audience": "owner",
+      "question": "Which fields will the access-review query return for each user?",
+      "why": "Reviewers need enough context to make a decision, and the query must be built against real field names.",
+      "type": "table",
+      "row_label": "Field",
+      "rows": [
+        "Employee ID",
+        "Account ID",
+        "First Name",
+        "Last Name",
+        "Status",
+        "Entitlement Type"
+      ],
+      "columns": [
+        "Field name in the application",
+        "Example value",
+        "Notes"
+      ],
+      "required": true
+    },
+    {
       "id": "account_kinds",
       "section": "accounts",
       "audience": "owner",
@@ -1113,6 +1179,26 @@
       "question": "What are those access levels called, and roughly what does each allow?",
       "hint": "e.g. 'Content Creator - can publish articles', 'Community Admin - manages a group'",
       "type": "text",
+      "required": true,
+      "applies_to": {
+        "has_access_levels": [
+          true
+        ]
+      }
+    },
+    {
+      "id": "entitlement_matrix",
+      "section": "entitlements",
+      "audience": "owner",
+      "question": "List each entitlement with its type and description.",
+      "hint": "Add one row per group, role or permission. Use the + button to add rows.",
+      "type": "table",
+      "columns": [
+        "Entitlement Type",
+        "Entitlement Name",
+        "Entitlement Description"
+      ],
+      "dynamic": true,
       "required": true,
       "applies_to": {
         "has_access_levels": [
@@ -1656,10 +1742,10 @@
       "id": "ws_server_dns",
       "section": "connectivity",
       "audience": "owner",
-      "question": "What is the server DNS name for each environment?",
+      "question": "What is the server DNS name for each environment? (summary only - use the grid below for detail)",
       "hint": "e.g. 'DEV api-dev.example.com / UAT api-uat.example.com / PROD api.example.com'",
       "type": "text",
-      "required": true,
+      "required": false,
       "applies_to": {
         "integration_methods": [
           "SCIM 2.0 API",
@@ -1672,9 +1758,42 @@
       "id": "ws_server_ip",
       "section": "connectivity",
       "audience": "owner",
-      "question": "What are the server IP addresses, if firewall rules are needed?",
+      "question": "What are the server IP addresses, if firewall rules are needed? (summary only - use the grid below for detail)",
       "type": "text",
       "required": false,
+      "applies_to": {
+        "integration_methods": [
+          "SCIM 2.0 API",
+          "REST / JSON API",
+          "SOAP / XML API"
+        ]
+      }
+    },
+    {
+      "id": "ws_environment_matrix",
+      "section": "connectivity",
+      "audience": "owner",
+      "question": "Fill in the connection details for each environment.",
+      "why": "Each environment has its own host and credentials; one shared answer cannot be used to build the source.",
+      "type": "table",
+      "row_label": "Environment",
+      "rows": [
+        "Dev",
+        "Test",
+        "UAT",
+        "PROD"
+      ],
+      "columns": [
+        "Server DNS Name",
+        "Server IP Address",
+        "Authentication Type",
+        "Base URL",
+        "Grant Type",
+        "Token URL",
+        "Username/Client ID",
+        "Custom Config"
+      ],
+      "required": true,
       "applies_to": {
         "integration_methods": [
           "SCIM 2.0 API",

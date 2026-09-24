@@ -39,6 +39,12 @@ def answer(state: dict[str, Any], *slot_ids: str) -> str:
     return ""
 
 
+def table(state: dict[str, Any], slot_id: str) -> list[dict[str, Any]]:
+    entry = state["answers"].get(slot_id)
+    value = entry["value"] if entry else None
+    return value if isinstance(value, list) and value and isinstance(value[0], dict) else []
+
+
 def band(ws: Worksheet, row: int, text: str, span: int, fill: PatternFill = GREEN) -> int:
     ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=span)
     cell = ws.cell(row=row, column=1, value=text)
@@ -302,29 +308,23 @@ def sheet_web_services(wb: Workbook, state: dict[str, Any]) -> None:
         ],
     )
     auth = answer(state, "auth_method")
-    dns = answer(state, "ws_server_dns")
-    ips = answer(state, "ws_server_ip")
-    base = answer(state, "base_url")
-    grant = answer(state, "oauth_grant_type")
-    token_url = answer(state, "oauth_token_url")
-    client = answer(state, "api_client_id")
-    custom = answer(state, "api_custom_config")
+    grid = {r.get("Environment", ""): r for r in table(state, "ws_environment_matrix")}
     env_note = answer(state, "environment_list")
     for env in ["Dev", "Test", "UAT", "PROD"]:
-        production = env == "PROD"
+        r = grid.get(env, {})
         row = data_row(
             ws,
             row,
             [
                 env,
-                dns if production else "",
-                ips if production else "",
-                auth if production else "",
-                base if production else "",
-                grant if production else "",
-                token_url if production else "",
-                client if production else "",
-                custom if production else "",
+                r.get("Server DNS Name", ""),
+                r.get("Server IP Address", ""),
+                r.get("Authentication Type") or (auth if env == "PROD" else ""),
+                r.get("Base URL", ""),
+                r.get("Grant Type") or (answer(state, "oauth_grant_type") if env == "PROD" else ""),
+                r.get("Token URL") or (answer(state, "oauth_token_url") if env == "PROD" else ""),
+                r.get("Username/Client ID") or (answer(state, "api_client_id") if env == "PROD" else ""),
+                r.get("Custom Config", ""),
             ],
         )
     if env_note:
@@ -341,18 +341,32 @@ def sheet_web_services(wb: Workbook, state: dict[str, Any]) -> None:
 
     row = headers(ws, row, ["Operation", "Context URL", "Sample Request", "Sample Response", "Required?"])
     selected = state["answers"].get("api_operations", {}).get("value", []) or []
+    ops = {r.get("Operation", ""): r for r in table(state, "ws_operation_matrix")}
     endpoints = answer(state, "ws_endpoint_inventory")
     for operation, trigger in OPERATION_TRIGGERS.items():
-        if operation == "Test Connection":
+        entered = ops.get(operation, {})
+        stated = str(entered.get("Required?", "")).strip()
+        if stated:
+            required = stated
+        elif operation in ("Test Connection", "Account Aggregation"):
             required = "Required"
         elif operation == "Account Delta Aggregation":
-            delta = answer(state, "ws_delta_support")
-            required = "Required" if delta.startswith("Yes") else "Not Required"
+            required = "Required" if answer(state, "ws_delta_support").startswith("Yes") else "Not Required"
         elif trigger:
             required = "Required" if trigger in selected else "Not Required"
         else:
             required = "Not Required"
-        row = data_row(ws, row, [operation, "", "", "", required])
+        row = data_row(
+            ws,
+            row,
+            [
+                operation,
+                entered.get("Context URL", ""),
+                entered.get("Sample Request", ""),
+                entered.get("Sample Response", ""),
+                required,
+            ],
+        )
     if endpoints:
         ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=5)
         cell = ws.cell(row=row, column=1, value=f"Endpoints reported at intake: {endpoints}")
@@ -377,17 +391,26 @@ def sheet_web_services(wb: Workbook, state: dict[str, Any]) -> None:
     row += 2
 
     row = headers(ws, row, ["Field", "Example", "Definition", "Required?", ""])
+    grid = {r.get("Field", ""): r for r in table(state, "uar_field_matrix")}
     identifier = answer(state, "corporate_id_field", "unique_identifier")
     account_id = answer(state, "account_id_field")
     status = answer(state, "inactive_representation")
     for field, example, definition, required in UAR_FIELDS:
-        if field.startswith("Employee ID") and identifier:
+        key = field.split(" [")[0]
+        entered = grid.get(key, {})
+        if entered.get("Field name in the application"):
+            definition = entered["Field name in the application"]
+        elif field.startswith("Employee ID") and identifier:
             definition = identifier
-        if field == "Account ID" and account_id:
+        elif field == "Account ID" and account_id:
             definition = account_id
-        if field == "Status" and status:
+        elif field == "Status" and status:
             definition = status
-        row = data_row(ws, row, [field, example, definition, required, ""])
+        row = data_row(
+            ws,
+            row,
+            [field, entered.get("Example value") or example, definition, required, entered.get("Notes", "")],
+        )
     extra = answer(state, "user_record_fields")
     if extra:
         ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=4)
@@ -400,11 +423,26 @@ def sheet_web_services(wb: Workbook, state: dict[str, Any]) -> None:
 
     row = band(ws, row, "Entitlement Information (separate query for each entitlement with proper description)", 3)
     row = headers(ws, row, ["Entitlement Type", "Entitlement Name", "Entitlement Description", "", ""])
-    levels = answer(state, "access_levels_list")
-    lines = [line.strip() for line in levels.splitlines() if line.strip()] if levels else []
-    for line in lines or ["", ""]:
-        name, _, description = line.partition("-")
-        row = data_row(ws, row, ["Group", name.strip(), description.strip(), "", ""])
+    rows = table(state, "entitlement_matrix")
+    if rows:
+        for r in rows:
+            row = data_row(
+                ws,
+                row,
+                [
+                    r.get("Entitlement Type", ""),
+                    r.get("Entitlement Name", ""),
+                    r.get("Entitlement Description", ""),
+                    "",
+                    "",
+                ],
+            )
+    else:
+        levels = answer(state, "access_levels_list")
+        lines = [line.strip() for line in levels.splitlines() if line.strip()] if levels else []
+        for line in lines or ["", ""]:
+            name, _, description = line.partition("-")
+            row = data_row(ws, row, ["Group", name.strip(), description.strip(), "", ""])
     for _ in range(2):
         row = data_row(ws, row, ["", "", "", "", ""])
 

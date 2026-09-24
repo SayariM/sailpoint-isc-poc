@@ -92,13 +92,39 @@ def section_status(state: dict[str, Any], audience: str, sid: str) -> tuple[int,
     return resolved, len(slots)
 
 
+def table_rows(slot: dict[str, Any], current: Any) -> list[dict[str, Any]]:
+    label = slot.get("row_label")
+    columns = slot["columns"]
+    if isinstance(current, list) and current:
+        return current
+    if slot.get("rows"):
+        return [{label: name, **{c: "" for c in columns}} for name in slot["rows"]]
+    blank = {c: "" for c in columns}
+    return [dict(blank) for _ in range(3)]
+
+
 def render_input(slot: dict[str, Any], state: dict[str, Any]) -> None:
     key = f"w_{slot['id']}"
     current = state["answers"].get(slot["id"], {}).get("value")
     options = slot.get("options", [])
     label = slot["question"]
 
-    if slot["type"] == "bool":
+    if slot["type"] == "table":
+        rows = table_rows(slot, current)
+        config = {}
+        if slot.get("row_label"):
+            config[slot["row_label"]] = st.column_config.TextColumn(disabled=True, width="medium")
+        edited = st.data_editor(
+            rows,
+            key=key,
+            use_container_width=True,
+            hide_index=True,
+            num_rows="dynamic" if slot.get("dynamic") else "fixed",
+            column_config=config,
+        )
+        # data_editor returns the data; session_state[key] holds only the diff.
+        st.session_state[f"tbl_{slot['id']}"] = edited
+    elif slot["type"] == "bool":
         default = None if current is None else ("Yes" if current else "No")
         st.segmented_control(
             label, ["Yes", "No"], default=default, key=key, label_visibility="collapsed"
@@ -202,6 +228,17 @@ def save_section(state: dict[str, Any], slots: list[dict]) -> None:
             continue
 
         state["open_questions"].pop(sid, None)
+        if slot["type"] == "table":
+            rows = st.session_state.get(f"tbl_{sid}")
+            if rows is None:
+                continue
+            rows = [r for r in rows if any(str(v).strip() for k, v in r.items() if k != slot.get("row_label"))]
+            if rows:
+                state["answers"][sid] = {"value": rows, "answered_at": now()}
+            else:
+                state["answers"].pop(sid, None)
+            continue
+
         value = st.session_state.get(f"w_{sid}")
         if slot["type"] == "bool":
             value = None if value is None else value == "Yes"

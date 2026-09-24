@@ -272,6 +272,10 @@ def run(slug: str, check: bool, audience: str) -> None:
 def render(value: Any) -> str:
     if isinstance(value, bool):
         return "Yes" if value else "No"
+    if isinstance(value, list) and value and isinstance(value[0], dict):
+        return " | ".join(
+            "; ".join(f"{k}={v}" for k, v in row.items() if str(v).strip()) for row in value
+        )
     if isinstance(value, list):
         return ", ".join(value)
     return str(value)
