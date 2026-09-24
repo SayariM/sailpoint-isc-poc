@@ -80,7 +80,7 @@ def widths(ws: Worksheet, values: list[int]) -> None:
 
 # (item text, slot ids feeding the Requirement column)
 PART_1 = [
-    ("Is Birthright Provisioning required?\n(Access granted to all new hires)", ("joiner_rules",)),
+    ("Is Birthright Provisioning required?\n(Access granted to all new hires)", ("birthright_required", "joiner_rules")),
     (
         "What account attributes (Firstname, Lastname, etc.) and other application "
         "information (role, access type, region) is needed to create an account?",
@@ -115,9 +115,9 @@ PART_4 = [
 ]
 PART_5 = [
     ("Entitlements to be requested", ("access_levels_list",)),
-    ("Roles to be requested", ()),
-    ("Access Models/Profiles to be requested", ()),
-    ("Request only for existing users? No new user account creation?", ("automation_scope",)),
+    ("Roles to be requested", ("roles_to_request",)),
+    ("Access Models/Profiles to be requested", ("access_profiles_to_request",)),
+    ("Request only for existing users? No new user account creation?", ("existing_users_only",)),
 ]
 PART_6 = [
     ("Manager Approval", ("approval_chain",)),
@@ -125,18 +125,18 @@ PART_6 = [
     ("Third Level Approval", ("segregation_of_duties",)),
 ]
 PART_7 = [
-    ("ServiceNow Fulfillment Group", ()),
-    ("ServiceNow Assignment Group", ()),
-    ("ServiceNow Assignment Group Manager", ()),
-    ("ServiceNow Service", ()),
-    ("ServiceNow Service Offering Sys_ID", ()),
+    ("ServiceNow Fulfillment Group", ("snow_fulfillment_group",)),
+    ("ServiceNow Assignment Group", ("snow_assignment_group",)),
+    ("ServiceNow Assignment Group Manager", ("snow_assignment_group_manager",)),
+    ("ServiceNow Service", ("snow_service",)),
+    ("ServiceNow Service Offering Sys_ID", ("snow_service_offering_sysid",)),
     ("Automated Provisioning", ("automation_wanted", "integration_methods")),
 ]
 PART_8 = [
     ("Comments", ("business_purpose",)),
-    ("Static Applications", ()),
+    ("Static Applications", ("static_application",)),
     ("Mover", ("mover_rules",)),
-    ("SNOW Ticket (if Required)", ()),
+    ("SNOW Ticket (if Required)", ("snow_ticket_required",)),
     ("Testing", ("test_identities",)),
 ]
 
@@ -186,7 +186,14 @@ def sheet_requirements(wb: Workbook, state: dict[str, Any]) -> None:
     row = band(ws, row, "RFA Considerations", 5)
     row = headers(ws, row, ["Question", "Comments", "", "", ""])
     ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=5)
-    row = data_row(ws, row, ["How is the form defined currently in RFA and how it should look in ISC?", ""])
+    row = data_row(
+        ws,
+        row,
+        [
+            "How is the form defined currently in RFA and how it should look in ISC?",
+            answer(state, "rfa_form_definition"),
+        ],
+    )
     ws.row_dimensions[row - 1].height = 46
     row += 1
 
@@ -295,9 +302,31 @@ def sheet_web_services(wb: Workbook, state: dict[str, Any]) -> None:
         ],
     )
     auth = answer(state, "auth_method")
+    dns = answer(state, "ws_server_dns")
+    ips = answer(state, "ws_server_ip")
+    base = answer(state, "base_url")
+    grant = answer(state, "oauth_grant_type")
+    token_url = answer(state, "oauth_token_url")
+    client = answer(state, "api_client_id")
+    custom = answer(state, "api_custom_config")
     env_note = answer(state, "environment_list")
     for env in ["Dev", "Test", "UAT", "PROD"]:
-        row = data_row(ws, row, [env, "", "", auth if env == "PROD" else "", "", "", "", "", ""])
+        production = env == "PROD"
+        row = data_row(
+            ws,
+            row,
+            [
+                env,
+                dns if production else "",
+                ips if production else "",
+                auth if production else "",
+                base if production else "",
+                grant if production else "",
+                token_url if production else "",
+                client if production else "",
+                custom if production else "",
+            ],
+        )
     if env_note:
         ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=9)
         cell = ws.cell(row=row, column=1, value=f"Reported environments: {env_note}")
@@ -349,10 +378,13 @@ def sheet_web_services(wb: Workbook, state: dict[str, Any]) -> None:
 
     row = headers(ws, row, ["Field", "Example", "Definition", "Required?", ""])
     identifier = answer(state, "corporate_id_field", "unique_identifier")
+    account_id = answer(state, "account_id_field")
     status = answer(state, "inactive_representation")
     for field, example, definition, required in UAR_FIELDS:
         if field.startswith("Employee ID") and identifier:
             definition = identifier
+        if field == "Account ID" and account_id:
+            definition = account_id
         if field == "Status" and status:
             definition = status
         row = data_row(ws, row, [field, example, definition, required, ""])

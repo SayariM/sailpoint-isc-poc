@@ -6,16 +6,61 @@
     "iam": "ISC developer (design decisions)"
   },
   "sections": [
-    { "id": "identification", "name": "About the application", "blurb": "What the application is, who owns it, and how accounts are managed today." },
-    { "id": "data", "name": "Where the user data lives", "blurb": "Hosting, data residency, and the store that actually holds the accounts." },
-    { "id": "connectivity", "name": "How we can connect to it", "blurb": "APIs, authentication, network reachability and limits." },
-    { "id": "environments", "name": "Environments", "blurb": "Which environments exist and which one we can safely build against." },
-    { "id": "accounts", "name": "User accounts", "blurb": "How a user is identified and what a user record contains." },
-    { "id": "entitlements", "name": "Access levels & permissions", "blurb": "Roles and groups inside the application, and who approves them." },
-    { "id": "lifecycle", "name": "Joiner / mover / leaver", "blurb": "What should happen automatically as people join, move and leave." },
-    { "id": "governance", "name": "Approvals & review", "blurb": "Approval chains, recertification and audit scope." },
-    { "id": "design", "name": "ISC design decisions", "blurb": "Connector and configuration decisions derived from the intake answers." },
-    { "id": "cutover", "name": "Testing & cutover", "blurb": "How this gets proven before production and rolled back if needed." }
+    {
+      "id": "identification",
+      "name": "About the application",
+      "blurb": "What the application is, who owns it, and how accounts are managed today."
+    },
+    {
+      "id": "data",
+      "name": "Where the user data lives",
+      "blurb": "Hosting, data residency, and the store that actually holds the accounts."
+    },
+    {
+      "id": "connectivity",
+      "name": "How we can connect to it",
+      "blurb": "APIs, authentication, network reachability and limits."
+    },
+    {
+      "id": "environments",
+      "name": "Environments",
+      "blurb": "Which environments exist and which one we can safely build against."
+    },
+    {
+      "id": "accounts",
+      "name": "User accounts",
+      "blurb": "How a user is identified and what a user record contains."
+    },
+    {
+      "id": "entitlements",
+      "name": "Access levels & permissions",
+      "blurb": "Roles and groups inside the application, and who approves them."
+    },
+    {
+      "id": "lifecycle",
+      "name": "Joiner / mover / leaver",
+      "blurb": "What should happen automatically as people join, move and leave."
+    },
+    {
+      "id": "governance",
+      "name": "Approvals & review",
+      "blurb": "Approval chains, recertification and audit scope."
+    },
+    {
+      "id": "fulfillment",
+      "name": "Fulfilment & ticketing",
+      "blurb": "How requests are routed and fulfilled, and what the current request form looks like."
+    },
+    {
+      "id": "design",
+      "name": "ISC design decisions",
+      "blurb": "Connector and configuration decisions derived from the intake answers."
+    },
+    {
+      "id": "cutover",
+      "name": "Testing & cutover",
+      "blurb": "How this gets proven before production and rolled back if needed."
+    }
   ],
   "slots": [
     {
@@ -102,7 +147,12 @@
       "audience": "owner",
       "question": "Do users sign in with their Acme account (SSO), or a separate username and password?",
       "type": "choice",
-      "options": ["Acme SSO (SAML/OIDC)", "Separate username and password", "Both", "Not sure"],
+      "options": [
+        "Acme SSO (SAML/OIDC)",
+        "Separate username and password",
+        "Both",
+        "Not sure"
+      ],
       "required": true
     },
     {
@@ -127,7 +177,12 @@
       "question": "Which cloud provider, subscription/account and region does it run in?",
       "type": "text",
       "required": true,
-      "applies_to": { "hosting_model": ["Acme cloud tenant (Azure / AWS / GCP)", "Hybrid (cloud + on-premises)"] }
+      "applies_to": {
+        "hosting_model": [
+          "Acme cloud tenant (Azure / AWS / GCP)",
+          "Hybrid (cloud + on-premises)"
+        ]
+      }
     },
     {
       "id": "data_residency",
@@ -174,8 +229,12 @@
       ],
       "required": true,
       "applies_to_any": {
-        "data_store_type": ["Relational database"],
-        "integration_methods": ["Direct database connection"]
+        "data_store_type": [
+          "Relational database"
+        ],
+        "integration_methods": [
+          "Direct database connection"
+        ]
       },
       "grounding": "JDBC system requirements supported databases driver"
     },
@@ -188,8 +247,12 @@
       "type": "text",
       "required": true,
       "applies_to_any": {
-        "data_store_type": ["Relational database"],
-        "integration_methods": ["Direct database connection"]
+        "data_store_type": [
+          "Relational database"
+        ],
+        "integration_methods": [
+          "Direct database connection"
+        ]
       }
     },
     {
@@ -201,8 +264,12 @@
       "type": "text",
       "required": true,
       "applies_to_any": {
-        "data_store_type": ["Relational database"],
-        "integration_methods": ["Direct database connection"]
+        "data_store_type": [
+          "Relational database"
+        ],
+        "integration_methods": [
+          "Direct database connection"
+        ]
       },
       "grounding": "JDBC base configuration connection virtual appliance cluster driver"
     },
@@ -222,8 +289,12 @@
       ],
       "required": true,
       "applies_to_any": {
-        "data_store_type": ["Relational database"],
-        "integration_methods": ["Direct database connection"]
+        "data_store_type": [
+          "Relational database"
+        ],
+        "integration_methods": [
+          "Direct database connection"
+        ]
       },
       "grounding": "JDBC Windows authentication Kerberos SQL Server krb5 config"
     },
@@ -236,8 +307,12 @@
       "type": "text",
       "required": true,
       "applies_to_any": {
-        "data_store_type": ["Relational database"],
-        "integration_methods": ["Direct database connection"]
+        "data_store_type": [
+          "Relational database"
+        ],
+        "integration_methods": [
+          "Direct database connection"
+        ]
       }
     },
     {
@@ -249,8 +324,12 @@
       "type": "text",
       "required": true,
       "applies_to_any": {
-        "data_store_type": ["Relational database"],
-        "integration_methods": ["Direct database connection"]
+        "data_store_type": [
+          "Relational database"
+        ],
+        "integration_methods": [
+          "Direct database connection"
+        ]
       },
       "grounding": "JDBC prerequisites virtual appliance cluster service account"
     },
@@ -263,8 +342,12 @@
       "type": "text",
       "required": true,
       "applies_to_any": {
-        "data_store_type": ["Relational database"],
-        "integration_methods": ["Direct database connection"]
+        "data_store_type": [
+          "Relational database"
+        ],
+        "integration_methods": [
+          "Direct database connection"
+        ]
       },
       "grounding": "JDBC account query settings account SQL query"
     },
@@ -277,8 +360,12 @@
       "type": "text",
       "required": true,
       "applies_to_any": {
-        "data_store_type": ["Relational database"],
-        "integration_methods": ["Direct database connection"]
+        "data_store_type": [
+          "Relational database"
+        ],
+        "integration_methods": [
+          "Direct database connection"
+        ]
       },
       "validate": "The key must be unique and immutable; a reused or editable key corrupts account history."
     },
@@ -291,8 +378,12 @@
       "type": "text",
       "required": true,
       "applies_to_any": {
-        "data_store_type": ["Relational database"],
-        "integration_methods": ["Direct database connection"]
+        "data_store_type": [
+          "Relational database"
+        ],
+        "integration_methods": [
+          "Direct database connection"
+        ]
       }
     },
     {
@@ -304,8 +395,12 @@
       "type": "text",
       "required": true,
       "applies_to_any": {
-        "data_store_type": ["Relational database"],
-        "integration_methods": ["Direct database connection"]
+        "data_store_type": [
+          "Relational database"
+        ],
+        "integration_methods": [
+          "Direct database connection"
+        ]
       }
     },
     {
@@ -317,8 +412,12 @@
       "type": "text",
       "required": true,
       "applies_to_any": {
-        "data_store_type": ["Relational database"],
-        "integration_methods": ["Direct database connection"]
+        "data_store_type": [
+          "Relational database"
+        ],
+        "integration_methods": [
+          "Direct database connection"
+        ]
       },
       "grounding": "JDBC group query settings entitlement aggregation group SQL query"
     },
@@ -337,8 +436,12 @@
       ],
       "required": true,
       "applies_to_any": {
-        "data_store_type": ["Relational database"],
-        "integration_methods": ["Direct database connection"]
+        "data_store_type": [
+          "Relational database"
+        ],
+        "integration_methods": [
+          "Direct database connection"
+        ]
       },
       "validate": "A delimited column or one-column-per-role layout needs extra transformation to become multi-valued entitlements."
     },
@@ -351,8 +454,12 @@
       "type": "text",
       "required": false,
       "applies_to_any": {
-        "data_store_type": ["Relational database"],
-        "integration_methods": ["Direct database connection"]
+        "data_store_type": [
+          "Relational database"
+        ],
+        "integration_methods": [
+          "Direct database connection"
+        ]
       }
     },
     {
@@ -363,8 +470,12 @@
       "type": "text",
       "required": true,
       "applies_to_any": {
-        "data_store_type": ["Relational database"],
-        "integration_methods": ["Direct database connection"]
+        "data_store_type": [
+          "Relational database"
+        ],
+        "integration_methods": [
+          "Direct database connection"
+        ]
       }
     },
     {
@@ -376,8 +487,12 @@
       "type": "text",
       "required": true,
       "applies_to_any": {
-        "data_store_type": ["Relational database"],
-        "integration_methods": ["Direct database connection"]
+        "data_store_type": [
+          "Relational database"
+        ],
+        "integration_methods": [
+          "Direct database connection"
+        ]
       }
     },
     {
@@ -389,8 +504,12 @@
       "type": "text",
       "required": false,
       "applies_to_any": {
-        "data_store_type": ["Relational database"],
-        "integration_methods": ["Direct database connection"]
+        "data_store_type": [
+          "Relational database"
+        ],
+        "integration_methods": [
+          "Direct database connection"
+        ]
       },
       "grounding": "JDBC stored procedure account query provisioning query"
     },
@@ -402,8 +521,12 @@
       "type": "text",
       "required": false,
       "applies_to_any": {
-        "data_store_type": ["Relational database"],
-        "integration_methods": ["Direct database connection"]
+        "data_store_type": [
+          "Relational database"
+        ],
+        "integration_methods": [
+          "Direct database connection"
+        ]
       }
     },
     {
@@ -415,8 +538,12 @@
       "type": "text",
       "required": true,
       "applies_to_any": {
-        "data_store_type": ["Relational database"],
-        "integration_methods": ["Direct database connection"]
+        "data_store_type": [
+          "Relational database"
+        ],
+        "integration_methods": [
+          "Direct database connection"
+        ]
       }
     },
     {
@@ -426,7 +553,11 @@
       "question": "Which directory product, and what is the base DN / search scope for users and groups?",
       "type": "text",
       "required": true,
-      "applies_to": { "data_store_type": ["LDAP / Active Directory style directory"] }
+      "applies_to": {
+        "data_store_type": [
+          "LDAP / Active Directory style directory"
+        ]
+      }
     },
     {
       "id": "nosql_detail",
@@ -435,7 +566,11 @@
       "question": "Which document store, and how are user records structured?",
       "type": "text",
       "required": true,
-      "applies_to": { "data_store_type": ["NoSQL / document store"] }
+      "applies_to": {
+        "data_store_type": [
+          "NoSQL / document store"
+        ]
+      }
     },
     {
       "id": "integration_methods",
@@ -472,7 +607,15 @@
         "Not sure"
       ],
       "required": true,
-      "applies_to": { "integration_methods": ["SCIM 2.0 API", "REST / JSON API", "SOAP / XML API", "Vendor-specific SDK or tool", "Not sure"] }
+      "applies_to": {
+        "integration_methods": [
+          "SCIM 2.0 API",
+          "REST / JSON API",
+          "SOAP / XML API",
+          "Vendor-specific SDK or tool",
+          "Not sure"
+        ]
+      }
     },
     {
       "id": "api_documentation",
@@ -482,7 +625,13 @@
       "hint": "An OpenAPI/Swagger file or Postman collection is ideal.",
       "type": "text",
       "required": true,
-      "applies_to": { "integration_methods": ["SCIM 2.0 API", "REST / JSON API", "SOAP / XML API"] }
+      "applies_to": {
+        "integration_methods": [
+          "SCIM 2.0 API",
+          "REST / JSON API",
+          "SOAP / XML API"
+        ]
+      }
     },
     {
       "id": "scim_support",
@@ -492,7 +641,11 @@
       "why": "Vendor SCIM claims are often partial; knowing exactly which endpoints exist prevents a late connector change.",
       "type": "text",
       "required": true,
-      "applies_to": { "integration_methods": ["SCIM 2.0 API"] },
+      "applies_to": {
+        "integration_methods": [
+          "SCIM 2.0 API"
+        ]
+      },
       "validate": "Confirm which SCIM resources are actually served, since a vendor may expose Users but not Groups, or use a non-standard path for roles."
     },
     {
@@ -513,7 +666,13 @@
         "Remove a role / group"
       ],
       "required": true,
-      "applies_to": { "integration_methods": ["SCIM 2.0 API", "REST / JSON API", "SOAP / XML API"] }
+      "applies_to": {
+        "integration_methods": [
+          "SCIM 2.0 API",
+          "REST / JSON API",
+          "SOAP / XML API"
+        ]
+      }
     },
     {
       "id": "ws_endpoint_inventory",
@@ -524,7 +683,13 @@
       "why": "Each operation is configured separately in ISC with its own URL, method, headers and body.",
       "type": "text",
       "required": true,
-      "applies_to": { "integration_methods": ["SCIM 2.0 API", "REST / JSON API", "SOAP / XML API"] },
+      "applies_to": {
+        "integration_methods": [
+          "SCIM 2.0 API",
+          "REST / JSON API",
+          "SOAP / XML API"
+        ]
+      },
       "grounding": "web services HTTP operations context URL HTTP method operation type"
     },
     {
@@ -535,7 +700,13 @@
       "why": "The response shape determines the root path and attribute mapping; without a sample this is guesswork.",
       "type": "text",
       "required": true,
-      "applies_to": { "integration_methods": ["SCIM 2.0 API", "REST / JSON API", "SOAP / XML API"] },
+      "applies_to": {
+        "integration_methods": [
+          "SCIM 2.0 API",
+          "REST / JSON API",
+          "SOAP / XML API"
+        ]
+      },
       "grounding": "web services response information root path response mapping attribute path JSON XML"
     },
     {
@@ -552,7 +723,13 @@
         "Not sure"
       ],
       "required": true,
-      "applies_to": { "integration_methods": ["SCIM 2.0 API", "REST / JSON API", "SOAP / XML API"] },
+      "applies_to": {
+        "integration_methods": [
+          "SCIM 2.0 API",
+          "REST / JSON API",
+          "SOAP / XML API"
+        ]
+      },
       "validate": "Every resource returned by an aggregation endpoint must carry a unique identifier; if roles or groups lack one, entitlement aggregation will fail and the vendor must fix it."
     },
     {
@@ -569,7 +746,13 @@
         "Not sure"
       ],
       "required": true,
-      "applies_to": { "integration_methods": ["SCIM 2.0 API", "REST / JSON API", "SOAP / XML API"] },
+      "applies_to": {
+        "integration_methods": [
+          "SCIM 2.0 API",
+          "REST / JSON API",
+          "SOAP / XML API"
+        ]
+      },
       "grounding": "web services aggregation paging limit offset response markers header links"
     },
     {
@@ -579,9 +762,19 @@
       "question": "Does the API ever return a success code (HTTP 200) while the body actually contains an error?",
       "why": "If so we must configure those error payloads explicitly, or failures will be recorded as successes.",
       "type": "choice",
-      "options": ["No - errors always use error status codes", "Yes - some errors come back as 200", "Not sure"],
+      "options": [
+        "No - errors always use error status codes",
+        "Yes - some errors come back as 200",
+        "Not sure"
+      ],
       "required": true,
-      "applies_to": { "integration_methods": ["SCIM 2.0 API", "REST / JSON API", "SOAP / XML API"] },
+      "applies_to": {
+        "integration_methods": [
+          "SCIM 2.0 API",
+          "REST / JSON API",
+          "SOAP / XML API"
+        ]
+      },
       "grounding": "web services HTTP errors error keys values success code retryable errors"
     },
     {
@@ -591,9 +784,20 @@
       "question": "Can the API return only the records changed since a given time or checkpoint?",
       "why": "Delta aggregation is only possible if the target itself supports change tracking.",
       "type": "choice",
-      "options": ["Yes - filter by last-modified timestamp", "Yes - change/audit feed", "No - full list only", "Not sure"],
+      "options": [
+        "Yes - filter by last-modified timestamp",
+        "Yes - change/audit feed",
+        "No - full list only",
+        "Not sure"
+      ],
       "required": true,
-      "applies_to": { "integration_methods": ["SCIM 2.0 API", "REST / JSON API", "SOAP / XML API"] },
+      "applies_to": {
+        "integration_methods": [
+          "SCIM 2.0 API",
+          "REST / JSON API",
+          "SOAP / XML API"
+        ]
+      },
       "grounding": "web services delta aggregation settings account delete status attribute"
     },
     {
@@ -604,7 +808,13 @@
       "hint": "e.g. 'returns HTTP 429 with Retry-After'",
       "type": "text",
       "required": false,
-      "applies_to": { "integration_methods": ["SCIM 2.0 API", "REST / JSON API", "SOAP / XML API"] },
+      "applies_to": {
+        "integration_methods": [
+          "SCIM 2.0 API",
+          "REST / JSON API",
+          "SOAP / XML API"
+        ]
+      },
       "grounding": "web services troubleshooting rate limit headers HTTP 429"
     },
     {
@@ -615,7 +825,11 @@
       "hint": "e.g. 'CSV, pipe-delimited, pushed to our SFTP nightly at 02:00'",
       "type": "text",
       "required": true,
-      "applies_to": { "integration_methods": ["File export/import (SFTP)"] }
+      "applies_to": {
+        "integration_methods": [
+          "File export/import (SFTP)"
+        ]
+      }
     },
     {
       "id": "auth_method",
@@ -633,6 +847,42 @@
         "Not sure - vendor needs to confirm"
       ],
       "required": true
+    },
+    {
+      "id": "oauth_grant_type",
+      "section": "connectivity",
+      "audience": "owner",
+      "question": "Which OAuth 2.0 grant type does the API use?",
+      "type": "choice",
+      "options": [
+        "Client Credentials",
+        "Password",
+        "Refresh Token",
+        "JWT Bearer",
+        "SAML Bearer Assertion",
+        "Not sure"
+      ],
+      "required": true,
+      "applies_to": {
+        "auth_method": [
+          "OAuth2 client ID and secret"
+        ]
+      },
+      "grounding": "web services OAuth 2.0 authentication grant types token URL"
+    },
+    {
+      "id": "oauth_token_url",
+      "section": "connectivity",
+      "audience": "owner",
+      "question": "What is the token URL?",
+      "hint": "e.g. https://auth.example.com/oauth/token",
+      "type": "text",
+      "required": true,
+      "applies_to": {
+        "auth_method": [
+          "OAuth2 client ID and secret"
+        ]
+      }
     },
     {
       "id": "auth_permissions",
@@ -653,6 +903,30 @@
       "why": "A silently expiring secret is the most common cause of a dead integration.",
       "type": "text",
       "required": true
+    },
+    {
+      "id": "api_client_id",
+      "section": "connectivity",
+      "audience": "owner",
+      "question": "What username or client ID will our integration use?",
+      "why": "Only the identifier is needed here. Never put the secret or password in this form.",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "api_custom_config",
+      "section": "connectivity",
+      "audience": "owner",
+      "question": "Are any custom headers, certificates or non-standard settings required?",
+      "type": "text",
+      "required": false,
+      "applies_to": {
+        "integration_methods": [
+          "SCIM 2.0 API",
+          "REST / JSON API",
+          "SOAP / XML API"
+        ]
+      }
     },
     {
       "id": "network_exposure",
@@ -774,6 +1048,14 @@
       "validate": "Without a reliable corporate identifier, accounts cannot be correlated and will land as orphans."
     },
     {
+      "id": "account_id_field",
+      "section": "accounts",
+      "audience": "owner",
+      "question": "Is there a separate Account ID, different from the field used to match the person?",
+      "type": "text",
+      "required": false
+    },
+    {
       "id": "user_record_fields",
       "section": "accounts",
       "audience": "owner",
@@ -832,7 +1114,38 @@
       "hint": "e.g. 'Content Creator - can publish articles', 'Community Admin - manages a group'",
       "type": "text",
       "required": true,
-      "applies_to": { "has_access_levels": [true] }
+      "applies_to": {
+        "has_access_levels": [
+          true
+        ]
+      }
+    },
+    {
+      "id": "roles_to_request",
+      "section": "entitlements",
+      "audience": "owner",
+      "question": "Which roles should users be able to request?",
+      "hint": "Answer 'none' if access is requested at entitlement level only.",
+      "type": "text",
+      "required": true,
+      "applies_to": {
+        "has_access_levels": [
+          true
+        ]
+      }
+    },
+    {
+      "id": "access_profiles_to_request",
+      "section": "entitlements",
+      "audience": "owner",
+      "question": "Are there access profiles or bundles that should be requestable?",
+      "type": "text",
+      "required": false,
+      "applies_to": {
+        "has_access_levels": [
+          true
+        ]
+      }
     },
     {
       "id": "privileged_levels",
@@ -841,7 +1154,11 @@
       "question": "Which of those are privileged or high-risk, and how many people hold them?",
       "type": "text",
       "required": true,
-      "applies_to": { "has_access_levels": [true] }
+      "applies_to": {
+        "has_access_levels": [
+          true
+        ]
+      }
     },
     {
       "id": "access_nesting",
@@ -852,7 +1169,11 @@
       "why": "Flattening nested access understates what people can actually do.",
       "type": "text",
       "required": false,
-      "applies_to": { "has_access_levels": [true] }
+      "applies_to": {
+        "has_access_levels": [
+          true
+        ]
+      }
     },
     {
       "id": "access_level_owner",
@@ -861,7 +1182,11 @@
       "question": "Who decides who is allowed each access level?",
       "type": "text",
       "required": true,
-      "applies_to": { "has_access_levels": [true] }
+      "applies_to": {
+        "has_access_levels": [
+          true
+        ]
+      }
     },
     {
       "id": "automation_wanted",
@@ -892,8 +1217,26 @@
         "Password reset / unlock"
       ],
       "required": true,
-      "applies_to": { "automation_wanted": ["Automate account changes (create, disable, access grants)"] },
+      "applies_to": {
+        "automation_wanted": [
+          "Automate account changes (create, disable, access grants)"
+        ]
+      },
       "validate": "Every action selected must be supported by the operations the owner said the API actually exposes."
+    },
+    {
+      "id": "birthright_required",
+      "section": "lifecycle",
+      "audience": "owner",
+      "question": "Is birthright provisioning required, meaning access granted automatically to all new hires?",
+      "type": "choice",
+      "options": [
+        "Yes - all new hires",
+        "Yes - but only a defined population",
+        "No - access by request only",
+        "Not sure"
+      ],
+      "required": true
     },
     {
       "id": "joiner_rules",
@@ -902,6 +1245,19 @@
       "question": "Who should automatically get an account, and with what starting access?",
       "hint": "e.g. 'all Acme employees in Sales', or 'nobody automatically - always by request'",
       "type": "text",
+      "required": true
+    },
+    {
+      "id": "existing_users_only",
+      "section": "lifecycle",
+      "audience": "owner",
+      "question": "Should requests be limited to users who already have an account, with no new account creation?",
+      "type": "choice",
+      "options": [
+        "Yes - existing users only",
+        "No - new accounts can be created by request",
+        "Not sure"
+      ],
       "required": true
     },
     {
@@ -969,7 +1325,13 @@
       "audience": "owner",
       "question": "How often must access be reviewed and recertified?",
       "type": "choice",
-      "options": ["Quarterly", "Twice a year", "Annually", "Not currently reviewed", "Not sure"],
+      "options": [
+        "Quarterly",
+        "Twice a year",
+        "Annually",
+        "Not currently reviewed",
+        "Not sure"
+      ],
       "required": true
     },
     {
@@ -988,7 +1350,11 @@
       "hint": "e.g. 'whoever creates a payment cannot also approve it'",
       "type": "text",
       "required": false,
-      "applies_to": { "has_access_levels": [true] }
+      "applies_to": {
+        "has_access_levels": [
+          true
+        ]
+      }
     },
     {
       "id": "support_model",
@@ -999,12 +1365,86 @@
       "required": true
     },
     {
+      "id": "snow_fulfillment_group",
+      "section": "fulfillment",
+      "audience": "owner",
+      "question": "What is the ServiceNow fulfilment group?",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "snow_assignment_group",
+      "section": "fulfillment",
+      "audience": "owner",
+      "question": "What is the ServiceNow assignment group?",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "snow_assignment_group_manager",
+      "section": "fulfillment",
+      "audience": "owner",
+      "question": "Who is the ServiceNow assignment group manager?",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "snow_service",
+      "section": "fulfillment",
+      "audience": "owner",
+      "question": "What is the ServiceNow service?",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "snow_service_offering_sysid",
+      "section": "fulfillment",
+      "audience": "owner",
+      "question": "What is the ServiceNow service offering Sys_ID?",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "snow_ticket_required",
+      "section": "fulfillment",
+      "audience": "owner",
+      "question": "Is a ServiceNow ticket required as part of fulfilment, and in which cases?",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "rfa_form_definition",
+      "section": "fulfillment",
+      "audience": "owner",
+      "question": "How is the request form defined today in RFA, and how should it look in ISC?",
+      "hint": "Describe the fields a requester fills in now.",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "static_application",
+      "section": "fulfillment",
+      "audience": "owner",
+      "question": "Is this a static application, meaning access rarely changes once granted?",
+      "type": "choice",
+      "options": [
+        "Yes - static",
+        "No - access changes regularly",
+        "Not sure"
+      ],
+      "required": false
+    },
+    {
       "id": "target_tenant",
       "section": "design",
       "audience": "iam",
       "question": "Which ISC tenant(s), and in what order?",
       "type": "choice",
-      "options": ["Sandbox only (POC)", "Sandbox then production (standard path)", "Production only"],
+      "options": [
+        "Sandbox only (POC)",
+        "Sandbox then production (standard path)",
+        "Production only"
+      ],
       "required": true
     },
     {
@@ -1052,7 +1492,11 @@
       "question": "Entitlement object type, endpoint, schema and identity attribute.",
       "type": "text",
       "required": true,
-      "applies_to": { "has_access_levels": [true] },
+      "applies_to": {
+        "has_access_levels": [
+          true
+        ]
+      },
       "grounding": "entitlement group aggregation endpoint object type schema",
       "validate": "Confirm the connector reads this endpoint and that each returned resource carries a unique id."
     },
@@ -1074,7 +1518,11 @@
       "why": "Most onboarding failures land here; a transform referencing an unset attribute fails the whole create.",
       "type": "text",
       "required": true,
-      "applies_to": { "automation_wanted": ["Automate account changes (create, disable, access grants)"] },
+      "applies_to": {
+        "automation_wanted": [
+          "Automate account changes (create, disable, access grants)"
+        ]
+      },
       "grounding": "account create profile provisioning policy transform attribute generator",
       "validate": "Every attribute used by a transform must be guaranteed present or defaulted to a non-empty value; null and empty values are dropped from the transform context."
     },
@@ -1095,8 +1543,12 @@
       "type": "text",
       "required": true,
       "applies_to_any": {
-        "data_store_type": ["Relational database"],
-        "integration_methods": ["Direct database connection"]
+        "data_store_type": [
+          "Relational database"
+        ],
+        "integration_methods": [
+          "Direct database connection"
+        ]
       },
       "grounding": "JDBC account query settings single account SQL query identity placeholder group query",
       "validate": "The single account query must filter using the $(identity) placeholder, no query may end with a semicolon, and the account query must return a unique immutable identity column."
@@ -1109,11 +1561,17 @@
       "type": "text",
       "required": true,
       "applies_to": {
-        "automation_wanted": ["Automate account changes (create, disable, access grants)"]
+        "automation_wanted": [
+          "Automate account changes (create, disable, access grants)"
+        ]
       },
       "applies_to_any": {
-        "data_store_type": ["Relational database"],
-        "integration_methods": ["Direct database connection"]
+        "data_store_type": [
+          "Relational database"
+        ],
+        "integration_methods": [
+          "Direct database connection"
+        ]
       },
       "grounding": "JDBC provisioning query settings stored procedure plan response data types",
       "validate": "Enabling provisioning on a JDBC source is permanent and requires the purchased provisioning feature; typed placeholders default to string if no type is declared."
@@ -1125,7 +1583,13 @@
       "question": "Web Services operations: type, context URL, method, headers, body, root path and success codes for each.",
       "type": "text",
       "required": true,
-      "applies_to": { "integration_methods": ["SCIM 2.0 API", "REST / JSON API", "SOAP / XML API"] },
+      "applies_to": {
+        "integration_methods": [
+          "SCIM 2.0 API",
+          "REST / JSON API",
+          "SOAP / XML API"
+        ]
+      },
       "grounding": "web services general information context URL HTTP method response information success code root path",
       "validate": "Delete Account is only reachable through a Before Provisioning rule, and entitlement aggregation schema must be built through the SailPoint API rather than the UI."
     },
@@ -1136,7 +1600,13 @@
       "question": "Web Services paging configuration and termination condition.",
       "type": "text",
       "required": true,
-      "applies_to": { "integration_methods": ["SCIM 2.0 API", "REST / JSON API", "SOAP / XML API"] },
+      "applies_to": {
+        "integration_methods": [
+          "SCIM 2.0 API",
+          "REST / JSON API",
+          "SOAP / XML API"
+        ]
+      },
       "grounding": "web services configure paging keywords TERMINATE_IF NO_RECORDS RECORDS_COUNT operators",
       "validate": "Each paging step must start on a new line, operators need surrounding spaces, and arithmetic must not appear inside TERMINATE_IF."
     },
@@ -1147,7 +1617,13 @@
       "question": "Web Services error handling: HTTP error keys/values, object-not-found, auth-failed and expired-password messages, retryable errors.",
       "type": "text",
       "required": true,
-      "applies_to": { "integration_methods": ["SCIM 2.0 API", "REST / JSON API", "SOAP / XML API"] },
+      "applies_to": {
+        "integration_methods": [
+          "SCIM 2.0 API",
+          "REST / JSON API",
+          "SOAP / XML API"
+        ]
+      },
       "grounding": "web services additional settings HTTP errors retryable errors object not found authentication failed",
       "validate": "If the API returns HTTP 200 with an error payload, matching HTTP error keys must be configured or failures are silently recorded as successes."
     },
@@ -1175,6 +1651,37 @@
       "question": "How is this rolled back if aggregation or provisioning misbehaves in production?",
       "type": "text",
       "required": true
+    },
+    {
+      "id": "ws_server_dns",
+      "section": "connectivity",
+      "audience": "owner",
+      "question": "What is the server DNS name for each environment?",
+      "hint": "e.g. 'DEV api-dev.example.com / UAT api-uat.example.com / PROD api.example.com'",
+      "type": "text",
+      "required": true,
+      "applies_to": {
+        "integration_methods": [
+          "SCIM 2.0 API",
+          "REST / JSON API",
+          "SOAP / XML API"
+        ]
+      }
+    },
+    {
+      "id": "ws_server_ip",
+      "section": "connectivity",
+      "audience": "owner",
+      "question": "What are the server IP addresses, if firewall rules are needed?",
+      "type": "text",
+      "required": false,
+      "applies_to": {
+        "integration_methods": [
+          "SCIM 2.0 API",
+          "REST / JSON API",
+          "SOAP / XML API"
+        ]
+      }
     }
   ]
 }
