@@ -9,10 +9,10 @@ import sys
 from collections.abc import Iterable
 from pathlib import Path
 
-import pymupdf
 from dotenv import load_dotenv
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
+from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_groq import ChatGroq
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -34,6 +34,7 @@ CHROMA_DIR = ROOT / ".chroma"
 COLLECTION = "poc"
 EMBED_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 CHAT_MODEL = os.getenv("GROQ_CHAT_MODEL", "openai/gpt-oss-120b")
+GEMINI_MODEL = os.getenv("GEMINI_CHAT_MODEL", "gemini-3.8-flash")
 CHUNK_SIZE = 1000
 CHUNK_OVERLAP = 150
 TOP_K = 4
@@ -74,11 +75,20 @@ def format_context(docs: Iterable[Document]) -> str:
     return "\n\n".join(f"[{cite(d)}]\n{d.page_content}" for d in docs)
 
 
-def chat(temperature: float = 0.0, api_key: str | None = None) -> ChatGroq:
+def chat(temperature: float = 0.0, api_key: str | None = None) -> BaseChatModel:
+    # A caller-supplied key is always a Groq key; Gemini is used only from the environment.
+    gemini_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    if gemini_key and not api_key:
+        from langchain_google_genai import ChatGoogleGenerativeAI
+
+        return ChatGoogleGenerativeAI(
+            model=GEMINI_MODEL, temperature=temperature, google_api_key=gemini_key
+        )
     key = api_key or os.getenv("GROQ_API_KEY")
     if not key:
         raise RuntimeError(
-            "No Groq API key available. Set GROQ_API_KEY or supply your own key."
+            "No LLM API key available. Set GEMINI_API_KEY (or GROQ_API_KEY), "
+            "or supply your own key."
         )
     return ChatGroq(model=CHAT_MODEL, temperature=temperature, api_key=key)
 
@@ -88,6 +98,8 @@ def load_documents(docs_dir: Path) -> list[Document]:
     for path in sorted(docs_dir.rglob("*")):
         suffix = path.suffix.lower()
         if suffix == ".pdf":
+            import pymupdf  # deferred: its native DLL fails to load on hosts without the VC++ runtime
+
             with pymupdf.open(path) as pdf:
                 for page_no, page in enumerate(pdf, start=1):
                     text = page.get_text().strip()
@@ -131,7 +143,7 @@ def ask(question: str, k: int) -> None:
         chain = PROMPT | chat()
     except RuntimeError as exc:
         sys.exit(str(exc))
-    print(chain.invoke({"context": format_context(hits), "question": question}).content)
+    print(chain.invoke({"context": format_context(hits), "question": question}).text)
 
     print("\nRetrieved chunks:")
     for d in hits:

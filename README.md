@@ -31,6 +31,14 @@ streamlit run app.py
 Drop reference documents into `docs/` (PDF, Markdown, JSON, XML). The index
 builds automatically the first time the docs explainer is used.
 
+## Ask Agent
+
+The panel beside the form is an ISC-specific agent. Ask it about any question, or
+say "fill question 3" (or click **Ask agent to fill** on a question). It reads the
+question, drafts an answer from what you told it, the other answers on the form and
+the ISC docs, and shows it as a suggestion. **Apply** puts it on the form, where you
+can edit it, then **Save** and submit from **Review & export**.
+
 ## Notes
 
 - Embeddings run locally; only retrieved excerpts are sent to the language model.

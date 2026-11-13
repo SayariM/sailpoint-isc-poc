@@ -9,6 +9,7 @@ from typing import Any
 
 import streamlit as st
 
+import assistant
 import excel_export
 import interview
 
@@ -32,12 +33,18 @@ try:  # hosted platforms supply the key as a secret rather than a .env file
         os.environ["GROQ_API_KEY"] = st.secrets["GROQ_API_KEY"]
     if "GROQ_CHAT_MODEL" in st.secrets:
         os.environ["GROQ_CHAT_MODEL"] = st.secrets["GROQ_CHAT_MODEL"]
+    for name in ("GEMINI_API_KEY", "GEMINI_CHAT_MODEL"):
+        if name in st.secrets:
+            os.environ[name] = st.secrets[name]
 except Exception as exc:
     SECRET_ERROR = f"{type(exc).__name__}: {exc}"
 
 st.html("""
 <style>
-  .block-container { padding-top: 2.2rem; max-width: 1080px; }
+  .block-container { padding-top: 2.2rem; max-width: 1480px; }
+  div[data-testid="stColumn"]:has(.chat-anchor) {
+    position: sticky; top: 3.5rem; align-self: flex-start;
+  }
   h1, h2, h3 { letter-spacing: -0.01em; }
   div[data-testid="stVerticalBlockBorderWrapper"] { border-radius: 10px; }
   div[data-testid="stSidebarUserContent"] { padding-top: 1.2rem; }
@@ -190,6 +197,15 @@ def question_block(slot: dict[str, Any], state: dict[str, Any], number: int) -> 
         with left:
             st.checkbox("I don't know — flag for follow-up", key=unknown_key, value=is_open)
         with right:
+            if st.button(
+                ":material/smart_toy: Ask agent to fill",
+                key=f"ag_{slot['id']}",
+                use_container_width=True,
+                help="The agent drafts an answer; you review and edit it before saving.",
+            ):
+                st.session_state["agent_prompt"] = (
+                    f"Read question {number} and fill in the answer for me."
+                )
             # Deliberately not inside a popover: the click reruns the script and would
             # close it before the answer could render.
             if st.button(
@@ -276,12 +292,135 @@ def goto(index: int) -> None:
     st.rerun()
 
 
+def apply_proposal(slug: str, prop: dict[str, Any]) -> None:
+    state = interview.load_state(slug)
+    sid = prop["id"]
+    if prop["kind"] == "unknown":
+        state["open_questions"][sid] = {"reason": prop.get("reason", "")}
+        state["answers"].pop(sid, None)
+    else:
+        state["open_questions"].pop(sid, None)
+        state["answers"][sid] = {"value": prop["value"], "answered_at": now()}
+    interview.save_state(state)
+    # Dropping the widget keys makes the form re-read the saved value on the next run.
+    for prefix in ("w_", "u_", "r_"):
+        st.session_state.pop(f"{prefix}{sid}", None)
+    prop["status"] = "applied"
+
+
+def dismiss_proposal(prop: dict[str, Any]) -> None:
+    prop["status"] = "dismissed"
+
+
+def proposal_card(slug: str, i: int, j: int, prop: dict[str, Any]) -> None:
+    slot = BY_ID.get(prop["id"])
+    if slot is None or prop["status"] == "dismissed":
+        return
+    with st.container(border=True):
+        st.caption(slot["question"])
+        if prop["kind"] == "unknown":
+            st.text("Flag as unknown" + (f": {prop['reason']}" if prop["reason"] else ""))
+        else:
+            st.text("Suggested answer: " + interview.render(prop["value"]))
+        if prop.get("reason") and prop["kind"] == "answer":
+            st.caption("Based on: " + prop["reason"])
+        if prop["status"] == "applied":
+            st.caption(":material/check: Applied to the form. Review and edit it there.")
+            return
+        apply_col, dismiss_col = st.columns(2)
+        apply_col.button(
+            "Apply",
+            key=f"ap_{slug}_{i}_{j}",
+            on_click=apply_proposal,
+            args=(slug, prop),
+            type="primary",
+            use_container_width=True,
+        )
+        dismiss_col.button(
+            "Dismiss",
+            key=f"dm_{slug}_{i}_{j}",
+            on_click=dismiss_proposal,
+            args=(prop,),
+            use_container_width=True,
+        )
+
+
+def chat_panel(state: dict[str, Any], audience: str, page: str) -> None:
+    slug = state["slug"]
+    history: list[dict[str, Any]] = st.session_state.setdefault(f"chat_{slug}", [])
+    on_review = page == REVIEW
+    slots = [] if on_review else slots_for(state, audience, page)
+
+    title, clear = st.columns([3, 1])
+    title.subheader("Ask Agent")
+    if clear.button("Clear", key=f"clr_{slug}", disabled=not history):
+        history.clear()
+        st.rerun()
+    st.caption(
+        "Your SailPoint ISC specialist. Ask about any question, or say “fill question 3” "
+        "and I'll draft the answer for you to review, edit and submit."
+    )
+
+    box = st.container(height=520, border=True)
+    prompt = st.chat_input("Ask the ISC agent…", key=f"ci_{slug}") or st.session_state.pop(
+        "agent_prompt", None
+    )
+
+    if prompt:
+        prior = [{"role": m["role"], "content": m["content"]} for m in history]
+        history.append({"role": "user", "content": prompt})
+        outstanding = (
+            [
+                s["question"]
+                for s in interview.pending(SCHEMA, state, audience)
+                if s.get("required")
+            ][:15]
+            if on_review
+            else []
+        )
+        context = assistant.build_context(
+            SCHEMA["audiences"][audience],
+            "Review & export" if on_review else SECTIONS[page]["name"],
+            slots,
+            state,
+            outstanding,
+        )
+        with st.spinner("Thinking…"):
+            try:
+                ensure_index()
+            except Exception:
+                pass  # chat still works; the search tool reports the failure itself
+            reply = assistant.respond(prompt, prior, context, slots, state)
+        history.append(
+            {
+                "role": "assistant",
+                "content": reply.text,
+                "sources": reply.sources,
+                "proposals": reply.proposals,
+            }
+        )
+
+    with box:
+        if not history:
+            st.caption(
+                "For example: “Read question 2 and fill it in”, “What does the primary key "
+                "question mean?” or “The app is an HR portal backed by Oracle.”"
+            )
+        for i, msg in enumerate(history):
+            with st.chat_message(msg["role"]):
+                st.markdown(msg["content"])
+                if msg.get("sources"):
+                    st.caption("Sources: " + ", ".join(msg["sources"]))
+                for j, prop in enumerate(msg.get("proposals", [])):
+                    proposal_card(slug, i, j, prop)
+
+
 # ---------------------------------------------------------------- sidebar
 
 with st.sidebar:
     st.subheader("Source onboarding")
 
-    if not os.getenv("GROQ_API_KEY"):
+    if not (os.getenv("GEMINI_API_KEY") or os.getenv("GROQ_API_KEY")):
         detail = ""
         if SECRET_ERROR:
             detail = f"\n\nSecrets could not be read — {SECRET_ERROR}"
@@ -290,7 +429,7 @@ with st.sidebar:
         else:
             detail = "\n\nNo secrets file was found at all."
         st.warning(
-            "No GROQ_API_KEY set — the docs explainer will show raw documentation "
+            "No GEMINI_API_KEY or GROQ_API_KEY set — the docs explainer will show raw documentation "
             "excerpts instead of a written answer." + detail,
             icon=":material/key_off:",
         )
@@ -377,116 +516,125 @@ page = pages[nav]
 
 # ---------------------------------------------------------------- main
 
-st.title(state["name"])
+main_col, chat_col = st.columns([2.3, 1], gap="large")
 
-if page == REVIEW:
-    st.caption("Everything captured so far, and what is still outstanding.")
-    markdown = interview.report(state["slug"])
+with chat_col:
+    st.html('<div class="chat-anchor"></div>')
 
-    cols = st.columns(len(SCHEMA["audiences"]) + 1)
-    for col, (aud, aud_label) in zip(cols, SCHEMA["audiences"].items()):
-        answered = sum(1 for sid in state["answers"] if BY_ID[sid]["audience"] == aud)
-        col.metric(
-            aud_label,
-            answered,
-            f"{len(interview.pending(SCHEMA, state, aud))} outstanding",
-            delta_color="off",
+with main_col:
+    st.title(state["name"])
+
+    if page == REVIEW:
+        st.caption("Everything captured so far, and what is still outstanding.")
+        markdown = interview.report(state["slug"])
+
+        cols = st.columns(len(SCHEMA["audiences"]) + 1)
+        for col, (aud, aud_label) in zip(cols, SCHEMA["audiences"].items()):
+            answered = sum(1 for sid in state["answers"] if BY_ID[sid]["audience"] == aud)
+            col.metric(
+                aud_label,
+                answered,
+                f"{len(interview.pending(SCHEMA, state, aud))} outstanding",
+                delta_color="off",
+            )
+        cols[-1].metric("Flagged for follow-up", len(state["open_questions"]))
+
+        if state["open_questions"]:
+            st.subheader("Open questions")
+            for sid, item in state["open_questions"].items():
+                st.markdown(
+                    f"- **{BY_ID[sid]['question']}** — {item['reason'] or '_unassigned_'}"
+                )
+
+        left, right = st.columns(2)
+        left.download_button(
+            "Download requirements (Markdown)",
+            markdown,
+            file_name=f"{state['slug']}-requirements.md",
+            use_container_width=True,
         )
-    cols[-1].metric("Flagged for follow-up", len(state["open_questions"]))
+        right.download_button(
+            "Download requirements (JSON)",
+            json.dumps(state, indent=2, ensure_ascii=False),
+            file_name=f"{state['slug']}-requirements.json",
+            use_container_width=True,
+        )
 
-    if state["open_questions"]:
-        st.subheader("Open questions")
-        for sid, item in state["open_questions"].items():
-            st.markdown(
-                f"- **{BY_ID[sid]['question']}** — {item['reason'] or '_unassigned_'}"
+        with st.expander("Preview document"):
+            st.markdown(markdown)
+
+        st.divider()
+        st.subheader("Final submission")
+
+        outstanding = [s for s in interview.pending(SCHEMA, state, audience) if s.get("required")]
+        submitted = state.get("submitted_at")
+
+        if submitted:
+            st.success(f"Submitted {submitted}. Re-submit to refresh after any changes.")
+
+        if outstanding:
+            st.warning(
+                f"{len(outstanding)} required question(s) still unanswered. "
+                "They will be listed in the workbook as gaps.",
+                icon=":material/error:",
+            )
+            with st.expander(f"Show the {len(outstanding)} outstanding question(s)"):
+                for slot in outstanding:
+                    st.markdown(f"- {SECTIONS[slot['section']]['name']} — {slot['question']}")
+            allow = st.checkbox("Submit anyway, with the gaps recorded")
+        else:
+            allow = True
+
+        if st.button("Submit and generate Excel", type="primary", disabled=not allow):
+            state["submitted_at"] = now()
+            interview.save_state(state)
+            st.session_state["xlsx"] = excel_export.build(SCHEMA, state)
+            st.rerun()
+
+        if st.session_state.get("xlsx"):
+            st.download_button(
+                "Download Excel workbook",
+                st.session_state["xlsx"],
+                file_name=f"{state['slug']}-onboarding.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                type="primary",
             )
 
-    left, right = st.columns(2)
-    left.download_button(
-        "Download requirements (Markdown)",
-        markdown,
-        file_name=f"{state['slug']}-requirements.md",
-        use_container_width=True,
-    )
-    right.download_button(
-        "Download requirements (JSON)",
-        json.dumps(state, indent=2, ensure_ascii=False),
-        file_name=f"{state['slug']}-requirements.json",
-        use_container_width=True,
-    )
-
-    with st.expander("Preview document"):
-        st.markdown(markdown)
-
-    st.divider()
-    st.subheader("Final submission")
-
-    outstanding = [s for s in interview.pending(SCHEMA, state, audience) if s.get("required")]
-    submitted = state.get("submitted_at")
-
-    if submitted:
-        st.success(f"Submitted {submitted}. Re-submit to refresh after any changes.")
-
-    if outstanding:
-        st.warning(
-            f"{len(outstanding)} required question(s) still unanswered. "
-            "They will be listed in the workbook as gaps.",
-            icon=":material/error:",
-        )
-        with st.expander(f"Show the {len(outstanding)} outstanding question(s)"):
-            for slot in outstanding:
-                st.markdown(f"- {SECTIONS[slot['section']]['name']} — {slot['question']}")
-        allow = st.checkbox("Submit anyway, with the gaps recorded")
+        if st.button("← Back to questions"):
+            goto(nav - 1)
     else:
-        allow = True
+        section = SECTIONS[page]
+        st.subheader(section["name"])
+        if section.get("blurb"):
+            st.html(f'<p class="sectionblurb">{section["blurb"]}</p>')
 
-    if st.button("Submit and generate Excel", type="primary", disabled=not allow):
-        state["submitted_at"] = now()
-        interview.save_state(state)
-        st.session_state["xlsx"] = excel_export.build(SCHEMA, state)
-        st.rerun()
+        section_slots = slots_for(state, audience, page)
+        for number, slot in enumerate(section_slots, start=1):
+            question_block(slot, state, number)
 
-    if st.session_state.get("xlsx"):
-        st.download_button(
-            "Download Excel workbook",
-            st.session_state["xlsx"],
-            file_name=f"{state['slug']}-onboarding.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            type="primary",
-        )
+        st.html('<div class="navrow"></div>')
+        back, check, save, nxt = st.columns([1, 1.4, 1, 1.2])
 
-    if st.button("← Back to questions"):
-        goto(nav - 1)
-else:
-    section = SECTIONS[page]
-    st.subheader(section["name"])
-    if section.get("blurb"):
-        st.html(f'<p class="sectionblurb">{section["blurb"]}</p>')
+        if back.button("← Back", use_container_width=True, disabled=nav == 0):
+            save_section(state, section_slots)
+            goto(nav - 1)
 
-    section_slots = slots_for(state, audience, page)
-    for number, slot in enumerate(section_slots, start=1):
-        question_block(slot, state, number)
+        if check.button("Check against docs", use_container_width=True):
+            save_section(state, section_slots)
+            with st.spinner("Reviewing your answers…"):
+                ensure_index()
+                n = check_section(state, section_slots)
+            st.toast(f"Checked {n} answer(s) against the ISC documentation.")
+            st.rerun()
 
-    st.html('<div class="navrow"></div>')
-    back, check, save, nxt = st.columns([1, 1.4, 1, 1.2])
+        if save.button("Save", use_container_width=True):
+            save_section(state, section_slots)
+            st.toast("Saved — you can close this and come back later.")
 
-    if back.button("← Back", use_container_width=True, disabled=nav == 0):
-        save_section(state, section_slots)
-        goto(nav - 1)
+        next_label = "Review →" if nav == len(pages) - 2 else "Next section →"
+        if nxt.button(next_label, type="primary", use_container_width=True):
+            save_section(state, section_slots)
+            goto(nav + 1)
 
-    if check.button("Check against docs", use_container_width=True):
-        save_section(state, section_slots)
-        with st.spinner("Reviewing your answers…"):
-            ensure_index()
-            n = check_section(state, section_slots)
-        st.toast(f"Checked {n} answer(s) against the ISC documentation.")
-        st.rerun()
-
-    if save.button("Save", use_container_width=True):
-        save_section(state, section_slots)
-        st.toast("Saved — you can close this and come back later.")
-
-    next_label = "Review →" if nav == len(pages) - 2 else "Next section →"
-    if nxt.button(next_label, type="primary", use_container_width=True):
-        save_section(state, section_slots)
-        goto(nav + 1)
+with chat_col:
+    chat_panel(state, audience, page)

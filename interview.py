@@ -141,7 +141,7 @@ def explain_text(
         return f"_{exc}_\n\nShowing the matching documentation instead:\n\n{excerpts}", [
             rag.cite(d) for d in docs
         ]
-    return answer.content, [rag.cite(d) for d in docs]
+    return answer.text, [rag.cite(d) for d in docs]
 
 
 def explain(slot: dict[str, Any]) -> None:
@@ -171,7 +171,7 @@ def validate(
                 "rule": rule,
                 "context": rag.format_context(docs),
             }
-        ).content.strip()
+        ).text.strip()
     except Exception as exc:
         return f"UNKNOWN\nCould not run the check: {exc}"
 
