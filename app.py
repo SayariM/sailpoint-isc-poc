@@ -110,8 +110,13 @@ def table_rows(slot: dict[str, Any], current: Any) -> list[dict[str, Any]]:
     return [dict(blank) for _ in range(3)]
 
 
+def wk(prefix: str, sid: str) -> str:
+    """Widget key that changes when the agent applies an answer, forcing a fresh widget."""
+    return f"{prefix}{sid}_v{st.session_state.get(f'ver_{sid}', 0)}"
+
+
 def render_input(slot: dict[str, Any], state: dict[str, Any]) -> None:
-    key = f"w_{slot['id']}"
+    key = wk("w_", slot["id"])
     current = state["answers"].get(slot["id"], {}).get("value")
     options = slot.get("options", [])
     label = slot["question"]
@@ -179,14 +184,14 @@ def question_block(slot: dict[str, Any], state: dict[str, Any], number: int) -> 
         if slot.get("hint"):
             st.caption(f"For example: {slot['hint']}")
 
-        unknown_key = f"u_{slot['id']}"
+        unknown_key = wk("u_", slot["id"])
         is_open = slot["id"] in state["open_questions"]
 
         if st.session_state.get(unknown_key, is_open):
             st.text_input(
                 "Who will find this out?",
                 value=state["open_questions"].get(slot["id"], {}).get("reason", ""),
-                key=f"r_{slot['id']}",
+                key=wk("r_", slot["id"]),
                 placeholder="Who will find this out?",
                 label_visibility="collapsed",
             )
@@ -238,8 +243,8 @@ def question_block(slot: dict[str, Any], state: dict[str, Any], number: int) -> 
 def save_section(state: dict[str, Any], slots: list[dict]) -> None:
     for slot in slots:
         sid = slot["id"]
-        if st.session_state.get(f"u_{sid}"):
-            state["open_questions"][sid] = {"reason": st.session_state.get(f"r_{sid}", "")}
+        if st.session_state.get(wk("u_", sid)):
+            state["open_questions"][sid] = {"reason": st.session_state.get(wk("r_", sid), "")}
             state["answers"].pop(sid, None)
             continue
 
@@ -255,7 +260,7 @@ def save_section(state: dict[str, Any], slots: list[dict]) -> None:
                 state["answers"].pop(sid, None)
             continue
 
-        value = st.session_state.get(f"w_{sid}")
+        value = st.session_state.get(wk("w_", sid))
         if slot["type"] == "bool":
             value = None if value is None else value == "Yes"
         if value in (None, "", []):
@@ -302,9 +307,9 @@ def apply_proposal(slug: str, prop: dict[str, Any]) -> None:
         state["open_questions"].pop(sid, None)
         state["answers"][sid] = {"value": prop["value"], "answered_at": now()}
     interview.save_state(state)
-    # Dropping the widget keys makes the form re-read the saved value on the next run.
-    for prefix in ("w_", "u_", "r_"):
-        st.session_state.pop(f"{prefix}{sid}", None)
+    # A new widget key makes the form build a fresh widget from the saved value, even when
+    # the browser still holds the old one.
+    st.session_state[f"ver_{sid}"] = st.session_state.get(f"ver_{sid}", 0) + 1
     prop["status"] = "applied"
 
 
