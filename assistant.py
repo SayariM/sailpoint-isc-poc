@@ -242,6 +242,10 @@ def _tools(
     }
 
 
+def _is_parse_failure(exc: Exception) -> bool:
+    return "output_parse_failed" in str(exc) or "Parsing failed" in str(exc)
+
+
 def respond(
     message: str,
     history: list[dict[str, str]],
@@ -254,19 +258,32 @@ def respond(
     sources: list[str] = []
     tools = _tools(slots, state, proposals, sources)
 
-    messages: list[Any] = [SystemMessage(SYSTEM + context)]
+    base: list[Any] = [SystemMessage(SYSTEM + context)]
     for turn in history[-MAX_HISTORY:]:
         cls = HumanMessage if turn["role"] == "user" else AIMessage
-        messages.append(cls(turn["content"]))
-    messages.append(HumanMessage(message))
+        base.append(cls(turn["content"]))
+    base.append(HumanMessage(message))
+    messages = list(base)
 
     try:
         import rag
 
-        llm = rag.chat(temperature=0.2, api_key=api_key).bind_tools(list(tools.values()))
+        plain = rag.chat(temperature=0.2, api_key=api_key)
+        llm = plain.bind_tools(list(tools.values()))
         reply: Any = None
         for _ in range(MAX_STEPS):
-            reply = llm.invoke(messages)
+            # Some models occasionally emit a malformed tool call, which the API rejects.
+            for attempt in range(3):
+                try:
+                    reply = llm.invoke(messages)
+                    break
+                except Exception as exc:
+                    if not _is_parse_failure(exc):
+                        raise
+                    if attempt == 2:
+                        reply = None
+            if reply is None:
+                break
             messages.append(reply)
             if not reply.tool_calls:
                 break
@@ -277,6 +294,15 @@ def respond(
                 except Exception as exc:
                     result = f"Tool failed: {exc}"
                 messages.append(ToolMessage(str(result), tool_call_id=call["id"]))
+
+        if reply is None:
+            # Tool calling keeps failing: answer from the docs without tools.
+            try:
+                excerpts = tools["search_docs"].invoke({"query": message})
+            except Exception:
+                excerpts = "Documentation search is unavailable."
+            fallback = [SystemMessage(SYSTEM + context + "\n\nDOCUMENTATION EXCERPTS:\n" + excerpts)]
+            reply = plain.invoke(fallback + base[1:])
     except Exception as exc:
         return Reply(f"The assistant is unavailable right now. {exc}")
 
