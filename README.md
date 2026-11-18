@@ -53,6 +53,18 @@ attempts lock a User ID for five minutes.
   when the app restarts. Use **Back up this intake** regularly, and move to a hosted
   database before real use.
 
+## Saving and resuming
+
+You can stop at any point and pick up later:
+
+- Answers are saved when you click **Save**, **Next/Back**, **Save progress** (sidebar),
+  switch sections from the sidebar, or sign out. Applying an Ask Agent suggestion saves it
+  immediately. The sidebar shows when the application was last saved.
+- When you sign back in, the app reopens the application you were last working on, at the
+  section you left, and the form shows your saved answers.
+- Closing the browser tab does not save what you typed since the last save, so click
+  **Save progress** before you leave.
+
 ## Ask Agent
 
 The panel beside the form is an ISC-specific agent. Ask it about any question, or

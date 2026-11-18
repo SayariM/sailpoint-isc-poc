@@ -293,8 +293,8 @@ def login_page() -> None:
 def account_panel(user: dict[str, Any]) -> None:
     st.caption(f"Signed in as **{user['name']}** · {auth.ROLES[user['role']]}")
     if st.button("Sign out", key="signout", use_container_width=True):
-        st.session_state.clear()
-        st.rerun()
+        # Handled once the current section is known, so unsaved answers are saved first.
+        st.session_state["signing_out"] = True
 
     with st.expander("Account"):
         with st.form("pw_form", clear_on_submit=True):
@@ -580,6 +580,22 @@ def check_section(state: dict[str, Any], slots: list[dict]) -> int:
     return checked
 
 
+def finish_sign_out(state: dict[str, Any] | None = None, slots: list[dict] | None = None) -> None:
+    if not st.session_state.get("signing_out"):
+        return
+    if state is not None and slots:
+        save_section(state, slots)
+    st.session_state.clear()
+    st.rerun()
+
+
+def saved_label(state: dict[str, Any]) -> str:
+    stamp = state.get("updated")
+    if not stamp:
+        return "Not saved yet"
+    return "Last saved " + stamp.replace("T", " ")[:16] + " UTC"
+
+
 def goto(index: int) -> None:
     st.session_state["nav"] = index
     st.rerun()
@@ -736,7 +752,10 @@ with st.sidebar:
 
     options = ["+ New application"] + existing_interviews(user)
     if "active" not in st.session_state:
-        st.session_state["active"] = st.query_params.get("app")
+        # Reopen the application the user was last working on after signing back in.
+        st.session_state["active"] = st.query_params.get("app") or auth.last_app(
+            user["user_id"], options
+        )
     active = st.session_state.get("active")
     choice = st.selectbox(
         "Application", options, index=options.index(active) if active in options else 0
@@ -748,6 +767,7 @@ with st.sidebar:
         st.query_params["app"] = choice
 
     if choice == "+ New application":
+        finish_sign_out()
         new_name = st.text_input("Application name")
         if st.button("Start intake", type="primary", disabled=not new_name):
             slug = unique_slug(new_name)
@@ -807,6 +827,14 @@ with st.sidebar:
 
     live = [sid for sid in SECTIONS if counts[sid][1]]
     pages = live + [REVIEW]
+
+    if st.session_state.get("resumed_for") != choice:
+        st.session_state["resumed_for"] = choice
+        saved_page = auth.get_resume(user["user_id"], choice)
+        if saved_page in pages and saved_page != pages[0]:
+            st.session_state["nav"] = pages.index(saved_page)
+            name = "Review & export" if saved_page == REVIEW else SECTIONS[saved_page]["name"]
+            st.toast(f"Welcome back — resuming at “{name}”.")
     nav = min(st.session_state.get("nav", 0), len(pages) - 1)
 
     def label(sid: str) -> str:
@@ -818,8 +846,19 @@ with st.sidebar:
 
     picked = st.radio("Section", pages, index=nav, format_func=label)
     if pages.index(picked) != nav:
-        nav = pages.index(picked)
-        st.session_state["nav"] = nav
+        # Leaving a section from the sidebar must not lose what was typed in it.
+        if pages[nav] != REVIEW:
+            save_section(state, slots_for(state, audience, pages[nav]))
+        st.session_state["nav"] = pages.index(picked)
+        st.rerun()
+
+    current_slots = [] if pages[nav] == REVIEW else slots_for(state, audience, pages[nav])
+    finish_sign_out(state, current_slots)
+    if st.button("Save progress", icon=":material/save:", use_container_width=True):
+        if current_slots:
+            save_section(state, current_slots)
+        st.toast("Progress saved — sign in later and you'll resume right here.")
+    st.caption(saved_label(state))
 
     st.divider()
     st.download_button(
@@ -831,6 +870,9 @@ with st.sidebar:
     )
 
 page = pages[nav]
+if st.session_state.get("resume_mark") != (choice, page):
+    auth.set_resume(user["user_id"], choice, page)
+    st.session_state["resume_mark"] = (choice, page)
 
 # ---------------------------------------------------------------- main
 

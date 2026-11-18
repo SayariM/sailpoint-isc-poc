@@ -49,6 +49,11 @@ def _db() -> Iterator[sqlite3.Connection]:
             "pw_hash BLOB NOT NULL, role TEXT NOT NULL, created TEXT NOT NULL)"
         )
         con.execute("CREATE TABLE IF NOT EXISTS attempts (user_id TEXT NOT NULL, ts REAL NOT NULL)")
+        con.execute(
+            "CREATE TABLE IF NOT EXISTS progress ("
+            "user_id TEXT NOT NULL, slug TEXT NOT NULL, page TEXT NOT NULL, updated TEXT NOT NULL, "
+            "PRIMARY KEY (user_id, slug))"
+        )
         yield con
         con.commit()
     finally:
@@ -186,6 +191,34 @@ def reset_password(user_id: str) -> str:
     temp = secrets.token_urlsafe(9)
     _set_password(user_id, temp)
     return temp
+
+
+def set_resume(user_id: str, slug: str, page: str) -> None:
+    """Remember which section a user was on in an application."""
+    stamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    with _db() as con:
+        con.execute(
+            "INSERT INTO progress VALUES (?, ?, ?, ?) "
+            "ON CONFLICT (user_id, slug) DO UPDATE SET page = excluded.page, updated = excluded.updated",
+            (_norm(user_id), slug, page, stamp),
+        )
+
+
+def get_resume(user_id: str, slug: str) -> str | None:
+    with _db() as con:
+        row = con.execute(
+            "SELECT page FROM progress WHERE user_id = ? AND slug = ?", (_norm(user_id), slug)
+        ).fetchone()
+    return row["page"] if row else None
+
+
+def last_app(user_id: str, allowed: list[str]) -> str | None:
+    """The most recently worked-on application the user can still open."""
+    with _db() as con:
+        rows = con.execute(
+            "SELECT slug FROM progress WHERE user_id = ? ORDER BY updated DESC", (_norm(user_id),)
+        ).fetchall()
+    return next((r["slug"] for r in rows if r["slug"] in allowed), None)
 
 
 def can_access(user: dict[str, Any], state: dict[str, Any]) -> bool:
