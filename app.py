@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-import base64
 import html
 import json
 import os
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
 import streamlit as st
@@ -18,12 +16,11 @@ import auth
 import excel_export
 import interview
 
-LOGO = Path(__file__).parent / "assets" / "logo.png"
 load_dotenv()
 
 st.set_page_config(
     page_title="KPMG | ISC Source Onboarding",
-    page_icon=str(LOGO) if LOGO.exists() else ":material/hub:",
+    page_icon=":material/hub:",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -53,15 +50,6 @@ try:  # hosted platforms supply the key as a secret rather than a .env file
             os.environ[name] = str(st.secrets[name]).strip()
 except Exception as exc:
     SECRET_ERROR = f"{type(exc).__name__}: {exc}"
-
-if LOGO.exists():
-    BRAND_HTML = (
-        '<img alt="KPMG" src="data:image/png;base64,'
-        + base64.b64encode(LOGO.read_bytes()).decode()
-        + '">'
-    )
-else:
-    BRAND_HTML = '<span class="wordmark">KPMG</span>'
 
 st.html("""
 <style>
@@ -134,15 +122,6 @@ st.html("""
   .hero::before { width: 260px; height: 260px; right: -60px; top: -120px; }
   .hero::after { width: 160px; height: 160px; right: 150px; bottom: -100px; background: rgba(255, 255, 255, 0.05); }
   .hero > * { position: relative; z-index: 1; }
-  .hero .brand {
-    display: flex; align-items: center; padding-right: 1.4rem;
-    border-right: 1px solid rgba(255, 255, 255, 0.45);
-  }
-  .hero .brand img { height: 64px; width: 64px; border-radius: 14px; display: block; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25); }
-  .hero .brand .wordmark {
-    font-family: Georgia, "Times New Roman", serif; font-style: italic; font-weight: 700;
-    font-size: 1.9rem; letter-spacing: 0.02em; color: #fff;
-  }
   .hero .heading { color: #fff; font-size: 1.3rem; font-weight: 700; line-height: 1.2; }
   .hero .sub { color: rgba(255, 255, 255, 0.85); font-size: 0.88rem; margin-top: 0.2rem; }
 
@@ -200,13 +179,12 @@ st.html("""
   div[data-testid="stChatInput"] { border-radius: 14px; }
 </style>
 <div class="hero">
-  <div class="brand">__BRAND__</div>
   <div>
     <div class="heading">SailPoint ISC Source Onboarding</div>
     <div class="sub">Identity Security Cloud intake, guided by the ISC Ask Agent</div>
   </div>
 </div>
-""".replace("__BRAND__", BRAND_HTML))
+""")
 
 
 @st.cache_resource(show_spinner=False)
