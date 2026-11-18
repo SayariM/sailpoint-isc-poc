@@ -247,13 +247,14 @@ def question_block(slot: dict[str, Any], state: dict[str, Any], number: int) -> 
             st.checkbox("I don't know — flag for follow-up", key=unknown_key, value=is_open)
         with right:
             if st.button(
-                ":material/smart_toy: Ask agent to fill",
+                ":material/smart_toy: Take help from Agent to know more",
                 key=f"ag_{slot['id']}",
                 use_container_width=True,
-                help="The agent drafts an answer; you review and edit it before saving.",
+                help="The ISC agent explains this question and can draft an answer for you to review.",
             ):
                 st.session_state["agent_prompt"] = (
-                    f"Read question {number} and fill in the answer for me."
+                    f"Explain question {number} in plain language, using the ISC docs, "
+                    "and tell me what a good answer looks like. Then offer to draft it for me."
                 )
             # Deliberately not inside a popover: the click reruns the script and would
             # close it before the answer could render.

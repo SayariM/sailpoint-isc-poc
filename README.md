@@ -34,7 +34,7 @@ builds automatically the first time the docs explainer is used.
 ## Ask Agent
 
 The panel beside the form is an ISC-specific agent. Ask it about any question, or
-say "fill question 3" (or click **Ask agent to fill** on a question). It reads the
+say "fill question 3" (or click **Take help from Agent to know more** on a question). It reads the
 question, drafts an answer from what you told it, the other answers on the form and
 the ISC docs, and shows it as a suggestion. **Apply** puts it on the form, where you
 can edit it, then **Save** and submit from **Review & export**.
