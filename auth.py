@@ -83,24 +83,32 @@ def _configured_admins() -> set[str]:
     return ids | ({default} if default else set())
 
 
-def ensure_default_admin() -> None:
-    """Create the admin from ADMIN_USER_ID / ADMIN_PASSWORD if it does not exist yet.
+def _managed_admin(user_id: str) -> bool:
+    """True when this account's password comes from the ADMIN_PASSWORD setting."""
+    uid = _norm(os.getenv("ADMIN_USER_ID", ""))
+    return bool(uid and os.getenv("ADMIN_PASSWORD") and _norm(user_id) == uid)
 
-    An existing account is never overwritten, so a password changed in the app sticks.
+
+def ensure_default_admin() -> str:
+    """Make the account in ADMIN_USER_ID / ADMIN_PASSWORD exist as an admin with that password.
+
+    The settings are the source of truth, so a stale or pre-registered account with the
+    same User ID is brought in line on every start. Returns a status line for the logs.
     """
     uid = _norm(os.getenv("ADMIN_USER_ID", ""))
     password = os.getenv("ADMIN_PASSWORD", "")
     if not uid or not password:
-        return
+        return "Default admin not configured (ADMIN_USER_ID / ADMIN_PASSWORD missing)."
     if not USER_ID_RE.match(uid):
         raise AuthError("ADMIN_USER_ID is not a valid User ID.")
     _check_password(password)
-    existing = get_user(uid)
-    if existing is None:
-        salt = secrets.token_bytes(16)
-        with _db() as con:
+
+    with _db() as con:
+        row = con.execute("SELECT * FROM users WHERE user_id = ?", (uid,)).fetchone()
+        if row is None:
+            salt = secrets.token_bytes(16)
             con.execute(
-                "INSERT OR IGNORE INTO users VALUES (?, ?, ?, ?, 'admin', ?)",
+                "INSERT INTO users VALUES (?, ?, ?, ?, 'admin', ?)",
                 (
                     uid,
                     "Administrator",
@@ -109,8 +117,21 @@ def ensure_default_admin() -> None:
                     datetime.now(timezone.utc).isoformat(timespec="seconds"),
                 ),
             )
-    elif existing["role"] != "admin":
-        set_role(uid, "admin")
+            return f"Default admin '{uid}' created."
+        changed = []
+        if not hmac.compare_digest(_derive(password, row["salt"]), row["pw_hash"]):
+            salt = secrets.token_bytes(16)
+            con.execute(
+                "UPDATE users SET salt = ?, pw_hash = ? WHERE user_id = ?",
+                (salt, _derive(password, salt), uid),
+            )
+            changed.append("password")
+        if row["role"] != "admin":
+            con.execute("UPDATE users SET role = 'admin' WHERE user_id = ?", (uid,))
+            changed.append("role")
+    return f"Default admin '{uid}' updated ({', '.join(changed)})." if changed else (
+        f"Default admin '{uid}' is ready."
+    )
 
 
 def register(user_id: str, name: str, password: str, role: str) -> dict[str, Any]:
@@ -206,6 +227,8 @@ def _set_password(user_id: str, password: str) -> None:
 
 
 def change_password(user_id: str, old: str, new: str) -> None:
+    if _managed_admin(user_id):
+        raise AuthError("This account's password is set by ADMIN_PASSWORD. Change that setting instead.")
     _check_password(new)
     try:
         login(user_id, old)
@@ -220,6 +243,8 @@ def reset_password(user_id: str) -> str:
     """Admin action: set a random temporary password and return it once."""
     if get_user(user_id) is None:
         raise AuthError("No such user.")
+    if _managed_admin(user_id):
+        raise AuthError("This account's password is set by ADMIN_PASSWORD. Change that setting instead.")
     temp = secrets.token_urlsafe(9)
     _set_password(user_id, temp)
     return temp

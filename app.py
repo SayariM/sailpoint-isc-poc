@@ -49,7 +49,7 @@ try:  # hosted platforms supply the key as a secret rather than a .env file
         "ADMIN_PASSWORD",
     ):
         if name in st.secrets:
-            os.environ[name] = st.secrets[name]
+            os.environ[name] = str(st.secrets[name]).strip()
 except Exception as exc:
     SECRET_ERROR = f"{type(exc).__name__}: {exc}"
 
@@ -334,7 +334,13 @@ def account_panel(user: dict[str, Any]) -> None:
                 except auth.AuthError as exc:
                     st.error(str(exc))
             if reset_col.button("Reset password", key=f"reset_{person['user_id']}"):
-                st.session_state["temp_pw"] = (person["user_id"], auth.reset_password(person["user_id"]))
+                try:
+                    st.session_state["temp_pw"] = (
+                        person["user_id"],
+                        auth.reset_password(person["user_id"]),
+                    )
+                except auth.AuthError as exc:
+                    st.error(str(exc))
         if st.session_state.get("temp_pw"):
             who, temp = st.session_state["temp_pw"]
             st.info(f"Temporary password for `{who}`: `{temp}`. Share it once; they can change it after signing in.")
@@ -735,8 +741,9 @@ def chat_panel(state: dict[str, Any], audience: str, page: str) -> None:
 user = auth.get_user(st.session_state.get("user_id", ""))
 if user is None:
     try:
-        auth.ensure_default_admin()
+        print("[auth]", auth.ensure_default_admin(), flush=True)
     except auth.AuthError as exc:
+        print("[auth] Default admin not created:", exc, flush=True)
         st.error(f"Default admin not created: {exc}")
     st.session_state.pop("user_id", None)
     login_page()

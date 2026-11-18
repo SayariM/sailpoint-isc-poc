@@ -46,9 +46,12 @@ attempts lock a User ID for five minutes.
 - Each application has an owner. Users only see their own applications and those shared
   with them (**Owner & sharing** in the sidebar). Applications created before accounts
   existed have no owner and are visible to admins only, who can assign one.
-- The first account created becomes the admin. To name admins explicitly, set
-  `ADMIN_USER_IDS` (comma-separated) in `.env` or the platform secrets; then the
-  first-account rule no longer applies.
+- The first account created becomes the admin, unless you configure one. To set a default
+  admin, put `ADMIN_USER_ID` and `ADMIN_PASSWORD` in `.env` or the platform secrets. That
+  account is created or corrected on every start, so its password is changed by editing
+  `ADMIN_PASSWORD` (not inside the app). `ADMIN_USER_IDS` (comma-separated) instead lets
+  those User IDs become admins when they register themselves. If the admin sign-in is
+  refused on a hosted app, check the app logs for a line starting `[auth]`.
 - On Streamlit Community Cloud the disk is temporary, so accounts and intakes are lost
   when the app restarts. Use **Back up this intake** regularly, and move to a hosted
   database before real use.
