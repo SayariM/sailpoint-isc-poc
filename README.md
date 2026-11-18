@@ -31,6 +31,28 @@ streamlit run app.py
 Drop reference documents into `docs/` (PDF, Markdown, JSON, XML). The index
 builds automatically the first time the docs explainer is used.
 
+## Accounts and access
+
+Users sign in with a **User ID and password** (create one on the **Create account** tab).
+Passwords are stored as salted scrypt hashes in `state/users.db`, and five wrong
+attempts lock a User ID for five minutes.
+
+| Role | Sees | Can |
+|------|------|-----|
+| Application owner | Owner questions | Create applications, share them, fill them in |
+| ISC developer | Design-decision questions | Fill in applications shared with them |
+| Admin | Everything | Assign owners, change roles, reset passwords |
+
+- Each application has an owner. Users only see their own applications and those shared
+  with them (**Owner & sharing** in the sidebar). Applications created before accounts
+  existed have no owner and are visible to admins only, who can assign one.
+- The first account created becomes the admin. To name admins explicitly, set
+  `ADMIN_USER_IDS` (comma-separated) in `.env` or the platform secrets; then the
+  first-account rule no longer applies.
+- On Streamlit Community Cloud the disk is temporary, so accounts and intakes are lost
+  when the app restarts. Use **Back up this intake** regularly, and move to a hosted
+  database before real use.
+
 ## Ask Agent
 
 The panel beside the form is an ISC-specific agent. Ask it about any question, or

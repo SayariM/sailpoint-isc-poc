@@ -11,12 +11,15 @@ from pathlib import Path
 from typing import Any
 
 import streamlit as st
+from dotenv import load_dotenv
 
 import assistant
+import auth
 import excel_export
 import interview
 
 LOGO = Path(__file__).parent / "assets" / "logo.png"
+load_dotenv()
 
 st.set_page_config(
     page_title="KPMG | ISC Source Onboarding",
@@ -38,7 +41,7 @@ try:  # hosted platforms supply the key as a secret rather than a .env file
         os.environ["GROQ_API_KEY"] = st.secrets["GROQ_API_KEY"]
     if "GROQ_CHAT_MODEL" in st.secrets:
         os.environ["GROQ_CHAT_MODEL"] = st.secrets["GROQ_CHAT_MODEL"]
-    for name in ("GEMINI_API_KEY", "GEMINI_CHAT_MODEL"):
+    for name in ("GEMINI_API_KEY", "GEMINI_CHAT_MODEL", "ADMIN_USER_IDS"):
         if name in st.secrets:
             os.environ[name] = st.secrets[name]
 except Exception as exc:
@@ -212,10 +215,155 @@ def now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
-def existing_interviews() -> list[str]:
+def existing_interviews(user: dict[str, Any]) -> list[str]:
+    """Slugs of the applications this user may open."""
     if not interview.STATE_DIR.exists():
         return []
-    return sorted(p.stem for p in interview.STATE_DIR.glob("*.json"))
+    slugs = []
+    for path in sorted(interview.STATE_DIR.glob("*.json")):
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if isinstance(data, dict) and auth.can_access(user, data):
+            slugs.append(path.stem)
+    return slugs
+
+
+def unique_slug(name: str) -> str:
+    base = interview.slugify(name)
+    slug, n = base, 2
+    while interview.state_path(slug).exists():
+        slug, n = f"{base}-{n}", n + 1
+    return slug
+
+
+def login_page() -> None:
+    st.html(
+        '<style>div[data-testid="stSidebar"], div[data-testid="stSidebarCollapsedControl"],'
+        'div[data-testid="stExpandSidebarButton"] { display: none; }</style>'
+    )
+    _, mid, _ = st.columns([1, 1.3, 1])
+    with mid:
+        with st.container(border=True):
+            st.html('<h3 class="sectiontitle">Welcome</h3>')
+            st.caption("Sign in to continue your application, or create an account to start one.")
+            sign_in, sign_up = st.tabs(["Sign in", "Create account"])
+
+            with sign_in:
+                with st.form("login_form"):
+                    uid = st.text_input("User ID", autocomplete="username")
+                    pw = st.text_input("Password", type="password", autocomplete="current-password")
+                    go = st.form_submit_button("Sign in", type="primary", use_container_width=True)
+                if go:
+                    try:
+                        user = auth.login(uid, pw)
+                    except auth.AuthError as exc:
+                        st.error(str(exc))
+                    else:
+                        st.session_state["user_id"] = user["user_id"]
+                        st.rerun()
+
+            with sign_up:
+                with st.form("register_form"):
+                    new_uid = st.text_input("User ID", help="3-64 characters: letters, numbers and . _ @ + -")
+                    name = st.text_input("Full name")
+                    role = st.radio(
+                        "I am an",
+                        list(auth.SELF_SERVICE_ROLES),
+                        format_func=lambda r: auth.ROLES[r],
+                        horizontal=True,
+                    )
+                    pw1 = st.text_input("Password", type="password", help="At least 8 characters")
+                    pw2 = st.text_input("Confirm password", type="password")
+                    create = st.form_submit_button("Create account", type="primary", use_container_width=True)
+                if create:
+                    if pw1 != pw2:
+                        st.error("The passwords do not match.")
+                    else:
+                        try:
+                            user = auth.register(new_uid, name, pw1, role)
+                        except auth.AuthError as exc:
+                            st.error(str(exc))
+                        else:
+                            st.session_state["user_id"] = user["user_id"]
+                            st.rerun()
+
+
+def account_panel(user: dict[str, Any]) -> None:
+    st.caption(f"Signed in as **{user['name']}** · {auth.ROLES[user['role']]}")
+    if st.button("Sign out", key="signout", use_container_width=True):
+        st.session_state.clear()
+        st.rerun()
+
+    with st.expander("Account"):
+        with st.form("pw_form", clear_on_submit=True):
+            old = st.text_input("Current password", type="password")
+            new = st.text_input("New password", type="password")
+            if st.form_submit_button("Change password", use_container_width=True):
+                try:
+                    auth.change_password(user["user_id"], old, new)
+                    st.success("Password changed.")
+                except auth.AuthError as exc:
+                    st.error(str(exc))
+
+    if user["role"] != "admin":
+        return
+    with st.expander("Manage users"):
+        for person in auth.list_users():
+            st.markdown(f"**{person['name']}** · `{person['user_id']}`")
+            role_col, reset_col = st.columns([3, 2])
+            new_role = role_col.selectbox(
+                "Role",
+                list(auth.ROLES),
+                index=list(auth.ROLES).index(person["role"]),
+                format_func=lambda r: auth.ROLES[r],
+                key=f"role_{person['user_id']}",
+                label_visibility="collapsed",
+            )
+            if new_role != person["role"]:
+                try:
+                    auth.set_role(person["user_id"], new_role)
+                    st.rerun()
+                except auth.AuthError as exc:
+                    st.error(str(exc))
+            if reset_col.button("Reset password", key=f"reset_{person['user_id']}"):
+                st.session_state["temp_pw"] = (person["user_id"], auth.reset_password(person["user_id"]))
+        if st.session_state.get("temp_pw"):
+            who, temp = st.session_state["temp_pw"]
+            st.info(f"Temporary password for `{who}`: `{temp}`. Share it once; they can change it after signing in.")
+
+
+def access_panel(user: dict[str, Any], state: dict[str, Any]) -> None:
+    people = [u for u in auth.list_users() if u["user_id"] != state.get("owner_id")]
+    owner = state.get("owner_id")
+    with st.expander("Owner & sharing"):
+        st.caption(f"Owner: `{owner}`" if owner else "Owner: not assigned")
+        if not auth.can_manage(user, state):
+            shared = ", ".join(state.get("shared_with", [])) or "no one else"
+            st.caption(f"Shared with: {shared}")
+            return
+        ids = [p["user_id"] for p in people]
+        shared = st.multiselect(
+            "Share with",
+            ids,
+            default=[s for s in state.get("shared_with", []) if s in ids],
+            format_func=lambda i: next(p["name"] for p in people if p["user_id"] == i) + f" ({i})",
+        )
+        new_owner = owner
+        if user["role"] == "admin":
+            everyone = [u["user_id"] for u in auth.list_users()]
+            new_owner = st.selectbox(
+                "Owner",
+                everyone,
+                index=everyone.index(owner) if owner in everyone else 0,
+            )
+        if st.button("Save access", key="save_access", use_container_width=True):
+            state["shared_with"] = [s for s in shared if s != new_owner]
+            state["owner_id"] = new_owner
+            interview.save_state(state)
+            st.toast("Access updated.")
+            st.rerun()
 
 
 def slots_for(state: dict[str, Any], audience: str, section_id: str) -> list[dict]:
@@ -562,8 +710,15 @@ def chat_panel(state: dict[str, Any], audience: str, page: str) -> None:
 
 # ---------------------------------------------------------------- sidebar
 
+user = auth.get_user(st.session_state.get("user_id", ""))
+if user is None:
+    st.session_state.pop("user_id", None)
+    login_page()
+    st.stop()
+
 with st.sidebar:
     st.subheader("Source onboarding")
+    account_panel(user)
 
     if not (os.getenv("GEMINI_API_KEY") or os.getenv("GROQ_API_KEY")):
         detail = ""
@@ -579,7 +734,7 @@ with st.sidebar:
             icon=":material/key_off:",
         )
 
-    options = ["+ New application"] + existing_interviews()
+    options = ["+ New application"] + existing_interviews(user)
     if "active" not in st.session_state:
         st.session_state["active"] = st.query_params.get("app")
     active = st.session_state.get("active")
@@ -595,12 +750,14 @@ with st.sidebar:
     if choice == "+ New application":
         new_name = st.text_input("Application name")
         if st.button("Start intake", type="primary", disabled=not new_name):
-            slug = interview.slugify(new_name)
+            slug = unique_slug(new_name)
             interview.save_state(
                 {
                     "name": new_name,
                     "slug": slug,
                     "created": now(),
+                    "owner_id": user["user_id"],
+                    "shared_with": [],
                     "answers": {},
                     "open_questions": {},
                 }
@@ -612,19 +769,35 @@ with st.sidebar:
         with st.expander("Restore from a saved file"):
             upload = st.file_uploader("Intake JSON", type="json", label_visibility="collapsed")
             if upload is not None:
-                restored = json.load(upload)
-                interview.save_state(restored)
-                st.session_state["active"] = restored["slug"]
-                st.session_state["nav"] = 0
-                st.rerun()
+                try:
+                    restored = json.load(upload)
+                    if not isinstance(restored, dict) or not {"name", "answers", "open_questions"} <= restored.keys():
+                        raise ValueError
+                except ValueError:
+                    st.error("That file is not a valid intake backup.")
+                else:
+                    # Never trust the file's slug or owner: it would let an upload overwrite
+                    # another user's application or write outside the state folder.
+                    slug = unique_slug(str(restored["name"]))
+                    restored.update(slug=slug, owner_id=user["user_id"], shared_with=[])
+                    interview.save_state(restored)
+                    st.session_state["active"] = slug
+                    st.session_state["nav"] = 0
+                    st.rerun()
         st.stop()
 
     state = interview.load_state(choice)
-    audience = st.radio(
-        "Completing as",
-        list(SCHEMA["audiences"]),
-        format_func=lambda a: SCHEMA["audiences"][a],
-    )
+    access_panel(user, state)
+    audiences = list(SCHEMA["audiences"]) if user["role"] == "admin" else [user["role"]]
+    if len(audiences) > 1:
+        audience = st.radio(
+            "Completing as",
+            audiences,
+            format_func=lambda a: SCHEMA["audiences"][a],
+        )
+    else:
+        audience = audiences[0]
+        st.caption(f"Completing as: {SCHEMA['audiences'][audience]}")
 
     counts = {sid: section_status(state, audience, sid) for sid in SECTIONS}
     done = sum(c[0] for c in counts.values())
