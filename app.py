@@ -14,7 +14,7 @@ import excel_export
 import interview
 
 st.set_page_config(
-    page_title="ISC Source Onboarding",
+    page_title="KPMG | ISC Source Onboarding",
     page_icon=":material/hub:",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -41,22 +41,66 @@ except Exception as exc:
 
 st.html("""
 <style>
-  .block-container { padding-top: 2.2rem; max-width: 1480px; }
+  :root {
+    --kpmg-blue: #00338D; --kpmg-mid: #005EB8; --kpmg-light: #0091DA;
+    --kpmg-tint: #EAF1FB; --kpmg-line: #D3E0F3; --kpmg-ink: #0B1F3A;
+  }
+  .block-container { padding-top: 1.2rem; max-width: 1480px; }
+  header[data-testid="stHeader"] { background: transparent; }
   div[data-testid="stColumn"]:has(.chat-anchor) {
     position: sticky; top: 3.5rem; align-self: flex-start;
   }
-  h1, h2, h3 { letter-spacing: -0.01em; }
-  div[data-testid="stVerticalBlockBorderWrapper"] { border-radius: 10px; }
+  h1, h2, h3 { letter-spacing: -0.01em; color: var(--kpmg-blue); }
+  div[data-testid="stSidebar"] { border-right: 1px solid var(--kpmg-line); }
   div[data-testid="stSidebarUserContent"] { padding-top: 1.2rem; }
-  .qnum {
-    display:inline-block; font-size:0.72rem; font-weight:600; letter-spacing:0.06em;
-    color:#8A8F98; text-transform:uppercase; margin-bottom:0.15rem;
+  div[data-testid="stSidebar"] h3 {
+    border-bottom: 3px solid var(--kpmg-light); padding-bottom: 0.35rem;
   }
-  .qtext { font-size:1.02rem; font-weight:600; line-height:1.45; margin:0 0 0.15rem 0; }
-  .req { color:#C8102E; margin-left:0.25rem; }
-  .sectionblurb { color:#5C6370; font-size:0.94rem; margin:-0.4rem 0 1.1rem 0; }
-  .navrow { border-top:1px solid #E6E8EB; margin-top:1.4rem; padding-top:0.2rem; }
+  div[data-testid="stVerticalBlockBorderWrapper"] {
+    border-radius: 12px; border-color: var(--kpmg-line);
+    box-shadow: 0 1px 3px rgba(0, 51, 141, 0.07);
+  }
+  .hero {
+    background: linear-gradient(110deg, var(--kpmg-blue) 0%, var(--kpmg-mid) 62%, var(--kpmg-light) 100%);
+    border-radius: 14px; padding: 1.1rem 1.6rem; margin-bottom: 1.3rem;
+    display: flex; align-items: center; gap: 1.4rem;
+    box-shadow: 0 4px 14px rgba(0, 51, 141, 0.22);
+  }
+  .hero .brand {
+    font-family: Georgia, "Times New Roman", serif; font-style: italic; font-weight: 700;
+    font-size: 1.9rem; letter-spacing: 0.02em; color: #fff;
+    padding-right: 1.4rem; border-right: 1px solid rgba(255, 255, 255, 0.45);
+  }
+  .hero .heading { color: #fff; font-size: 1.25rem; font-weight: 650; line-height: 1.2; }
+  .hero .sub { color: rgba(255, 255, 255, 0.85); font-size: 0.88rem; margin-top: 0.15rem; }
+  .qnum {
+    display: inline-block; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em;
+    color: var(--kpmg-mid); background: var(--kpmg-tint); border-radius: 999px;
+    padding: 0.12rem 0.65rem; text-transform: uppercase; margin-bottom: 0.3rem;
+  }
+  .qtext { font-size: 1.02rem; font-weight: 600; line-height: 1.45; margin: 0 0 0.15rem 0; color: var(--kpmg-ink); }
+  .req { color: var(--kpmg-light); margin-left: 0.25rem; }
+  .sectionblurb { color: #4A5F7D; font-size: 0.94rem; margin: -0.4rem 0 1.1rem 0; }
+  .navrow { border-top: 1px solid var(--kpmg-line); margin-top: 1.4rem; padding-top: 0.2rem; }
+  div[data-testid="stButton"] button, div[data-testid="stDownloadButton"] button { border-radius: 8px; font-weight: 600; }
+  div[data-testid="stButton"] button[kind="primary"],
+  div[data-testid="stDownloadButton"] button[kind="primary"] {
+    background: linear-gradient(135deg, var(--kpmg-blue), var(--kpmg-mid)); border: none;
+  }
+  div[data-testid="stMetric"] {
+    background: var(--kpmg-tint); border-radius: 10px; padding: 0.7rem 0.9rem;
+    border-left: 4px solid var(--kpmg-mid);
+  }
+  div[data-testid="stChatMessage"] { border-radius: 12px; }
+  div[data-testid="stProgress"] div[role="progressbar"] > div { background: var(--kpmg-light); }
 </style>
+<div class="hero">
+  <div class="brand">KPMG</div>
+  <div>
+    <div class="heading">SailPoint ISC Source Onboarding</div>
+    <div class="sub">Identity Security Cloud intake, guided by the ISC Ask Agent</div>
+  </div>
+</div>
 """)
 
 
