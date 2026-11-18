@@ -78,7 +78,39 @@ def _check_password(password: str) -> None:
 
 
 def _configured_admins() -> set[str]:
-    return {a.strip().lower() for a in os.getenv("ADMIN_USER_IDS", "").split(",") if a.strip()}
+    ids = {a.strip().lower() for a in os.getenv("ADMIN_USER_IDS", "").split(",") if a.strip()}
+    default = os.getenv("ADMIN_USER_ID", "").strip().lower()
+    return ids | ({default} if default else set())
+
+
+def ensure_default_admin() -> None:
+    """Create the admin from ADMIN_USER_ID / ADMIN_PASSWORD if it does not exist yet.
+
+    An existing account is never overwritten, so a password changed in the app sticks.
+    """
+    uid = _norm(os.getenv("ADMIN_USER_ID", ""))
+    password = os.getenv("ADMIN_PASSWORD", "")
+    if not uid or not password:
+        return
+    if not USER_ID_RE.match(uid):
+        raise AuthError("ADMIN_USER_ID is not a valid User ID.")
+    _check_password(password)
+    existing = get_user(uid)
+    if existing is None:
+        salt = secrets.token_bytes(16)
+        with _db() as con:
+            con.execute(
+                "INSERT OR IGNORE INTO users VALUES (?, ?, ?, ?, 'admin', ?)",
+                (
+                    uid,
+                    "Administrator",
+                    salt,
+                    _derive(password, salt),
+                    datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                ),
+            )
+    elif existing["role"] != "admin":
+        set_role(uid, "admin")
 
 
 def register(user_id: str, name: str, password: str, role: str) -> dict[str, Any]:

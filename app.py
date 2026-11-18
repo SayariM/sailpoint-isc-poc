@@ -41,7 +41,13 @@ try:  # hosted platforms supply the key as a secret rather than a .env file
         os.environ["GROQ_API_KEY"] = st.secrets["GROQ_API_KEY"]
     if "GROQ_CHAT_MODEL" in st.secrets:
         os.environ["GROQ_CHAT_MODEL"] = st.secrets["GROQ_CHAT_MODEL"]
-    for name in ("GEMINI_API_KEY", "GEMINI_CHAT_MODEL", "ADMIN_USER_IDS"):
+    for name in (
+        "GEMINI_API_KEY",
+        "GEMINI_CHAT_MODEL",
+        "ADMIN_USER_IDS",
+        "ADMIN_USER_ID",
+        "ADMIN_PASSWORD",
+    ):
         if name in st.secrets:
             os.environ[name] = st.secrets[name]
 except Exception as exc:
@@ -728,6 +734,10 @@ def chat_panel(state: dict[str, Any], audience: str, page: str) -> None:
 
 user = auth.get_user(st.session_state.get("user_id", ""))
 if user is None:
+    try:
+        auth.ensure_default_admin()
+    except auth.AuthError as exc:
+        st.error(f"Default admin not created: {exc}")
     st.session_state.pop("user_id", None)
     login_page()
     st.stop()
