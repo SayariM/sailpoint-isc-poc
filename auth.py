@@ -1,4 +1,4 @@
-"""User accounts: SQLite store with salted scrypt password hashes, roles and access checks."""
+"""User accounts: salted scrypt password hashes, roles and access checks (stored via db.py)."""
 
 from __future__ import annotations
 
@@ -7,14 +7,13 @@ import hmac
 import os
 import re
 import secrets
-import sqlite3
 import time
-from contextlib import contextmanager
 from datetime import datetime, timezone
-from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
-import interview
+from sqlalchemy.exc import IntegrityError
+
+import db
 
 # Roles reuse the schema's audience ids so a role decides which questions a user sees.
 ROLES = {"owner": "Application owner", "iam": "ISC developer", "admin": "Admin"}
@@ -25,39 +24,12 @@ MIN_PASSWORD = 8
 MAX_FAILS = 5
 LOCK_SECONDS = 300
 
-DB_PATH: Path | None = None
-
 
 class AuthError(ValueError):
     """A problem the user can fix, safe to show as-is."""
 
 
-def _path() -> Path:
-    return DB_PATH or interview.STATE_DIR / "users.db"
-
-
-@contextmanager
-def _db() -> Iterator[sqlite3.Connection]:
-    path = _path()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    con = sqlite3.connect(path)
-    con.row_factory = sqlite3.Row
-    try:
-        con.execute(
-            "CREATE TABLE IF NOT EXISTS users ("
-            "user_id TEXT PRIMARY KEY, name TEXT NOT NULL, salt BLOB NOT NULL, "
-            "pw_hash BLOB NOT NULL, role TEXT NOT NULL, created TEXT NOT NULL)"
-        )
-        con.execute("CREATE TABLE IF NOT EXISTS attempts (user_id TEXT NOT NULL, ts REAL NOT NULL)")
-        con.execute(
-            "CREATE TABLE IF NOT EXISTS progress ("
-            "user_id TEXT NOT NULL, slug TEXT NOT NULL, page TEXT NOT NULL, updated TEXT NOT NULL, "
-            "PRIMARY KEY (user_id, slug))"
-        )
-        yield con
-        con.commit()
-    finally:
-        con.close()
+_db = db.connection
 
 
 def _derive(password: str, salt: bytes) -> bytes:
@@ -68,7 +40,7 @@ def _norm(user_id: str) -> str:
     return user_id.strip().lower()
 
 
-def _public(row: sqlite3.Row) -> dict[str, Any]:
+def _public(row: Any) -> dict[str, Any]:
     return {k: row[k] for k in ("user_id", "name", "role", "created")}
 
 
@@ -103,6 +75,14 @@ def ensure_default_admin() -> str:
         raise AuthError("ADMIN_USER_ID is not a valid User ID.")
     _check_password(password)
 
+    try:
+        return _sync_default_admin(uid, password)
+    except IntegrityError:
+        # Another session created it at the same moment.
+        return _sync_default_admin(uid, password)
+
+
+def _sync_default_admin(uid: str, password: str) -> str:
     with _db() as con:
         row = con.execute("SELECT * FROM users WHERE user_id = ?", (uid,)).fetchone()
         if row is None:
@@ -158,7 +138,7 @@ def register(user_id: str, name: str, password: str, role: str) -> dict[str, Any
                 "INSERT INTO users VALUES (?, ?, ?, ?, ?, ?)",
                 (uid, name, salt, digest, role, datetime.now(timezone.utc).isoformat(timespec="seconds")),
             )
-    except sqlite3.IntegrityError:
+    except IntegrityError:
         raise AuthError("That User ID is already taken.") from None
     return get_user(uid)  # type: ignore[return-value]
 

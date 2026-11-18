@@ -47,6 +47,7 @@ try:  # hosted platforms supply the key as a secret rather than a .env file
         "ADMIN_USER_IDS",
         "ADMIN_USER_ID",
         "ADMIN_PASSWORD",
+        "DATABASE_URL",
     ):
         if name in st.secrets:
             os.environ[name] = str(st.secrets[name]).strip()
@@ -223,23 +224,13 @@ def now() -> str:
 
 def existing_interviews(user: dict[str, Any]) -> list[str]:
     """Slugs of the applications this user may open."""
-    if not interview.STATE_DIR.exists():
-        return []
-    slugs = []
-    for path in sorted(interview.STATE_DIR.glob("*.json")):
-        try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            continue
-        if isinstance(data, dict) and auth.can_access(user, data):
-            slugs.append(path.stem)
-    return slugs
+    return sorted(d["slug"] for d in interview.list_states() if auth.can_access(user, d))
 
 
 def unique_slug(name: str) -> str:
     base = interview.slugify(name)
     slug, n = base, 2
-    while interview.state_path(slug).exists():
+    while interview.state_exists(slug):
         slug, n = f"{base}-{n}", n + 1
     return slug
 
@@ -738,7 +729,15 @@ def chat_panel(state: dict[str, Any], audience: str, page: str) -> None:
 
 # ---------------------------------------------------------------- sidebar
 
-user = auth.get_user(st.session_state.get("user_id", ""))
+try:
+    user = auth.get_user(st.session_state.get("user_id", ""))
+except Exception as exc:  # database unreachable or misconfigured
+    print("[db] Cannot reach the database:", type(exc).__name__, flush=True)
+    st.error(
+        "The database is not reachable right now, so sign-in is unavailable. "
+        "Check the DATABASE_URL setting and try again."
+    )
+    st.stop()
 if user is None:
     try:
         print("[auth]", auth.ensure_default_admin(), flush=True)
@@ -914,7 +913,7 @@ with main_col:
     )
     if page == REVIEW:
         st.caption("Everything captured so far, and what is still outstanding.")
-        markdown = interview.report(state["slug"])
+        markdown = interview.build_report(state)
 
         cols = st.columns(len(SCHEMA["audiences"]) + 1)
         for col, (aud, aud_label) in zip(cols, SCHEMA["audiences"].items()):

@@ -16,9 +16,11 @@ from langchain_core.prompts import ChatPromptTemplate
 # rag.py also loads this, but it is imported lazily, so callers would see no .env.
 load_dotenv()
 
+import db  # noqa: E402  (needs DATABASE_URL from .env)
+
 ROOT = Path(__file__).parent
 SCHEMA_PATH = ROOT / "onboarding_schema.json"
-STATE_DIR = ROOT / "state"
+STATE_DIR = ROOT / "state"  # default SQLite location and legacy file-based data
 OUT_DIR = ROOT / "out"
 
 EXPLAIN_PROMPT = ChatPromptTemplate.from_messages(
@@ -60,23 +62,24 @@ def slugify(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-") or "source"
 
 
-def state_path(slug: str) -> Path:
-    return STATE_DIR / f"{slug}.json"
+def state_exists(slug: str) -> bool:
+    return db.app_exists(slug)
+
+
+def list_states() -> list[dict[str, Any]]:
+    return db.list_apps()
 
 
 def load_state(slug: str) -> dict[str, Any]:
-    path = state_path(slug)
-    if not path.exists():
+    state = db.get_app(slug)
+    if state is None:
         sys.exit(f"No interview found for '{slug}'. Start one with: interview.py start \"Name\"")
-    return json.loads(path.read_text(encoding="utf-8"))
+    return state
 
 
 def save_state(state: dict[str, Any]) -> None:
-    STATE_DIR.mkdir(exist_ok=True)
     state["updated"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
-    state_path(state["slug"]).write_text(
-        json.dumps(state, indent=2, ensure_ascii=False), encoding="utf-8"
-    )
+    db.put_app(state)
 
 
 def _matches(entry: dict[str, Any] | None, allowed: list[Any]) -> bool:
@@ -286,10 +289,8 @@ def oneline(text: str) -> str:
     return re.sub(r"\s+", " ", text).replace("|", r"\|").strip()
 
 
-def report(slug: str) -> str:
+def build_report(state: dict[str, Any]) -> str:
     schema = load_schema()
-    state = load_state(slug)
-    OUT_DIR.mkdir(exist_ok=True)
 
     lines = [
         f"# {schema['title']}: {state['name']}",
@@ -356,10 +357,16 @@ def report(slug: str) -> str:
         )
         lines.append(f"| {label} | {answered} | {len(pending(schema, state, audience))} |")
     lines += ["", f"Open questions: {len(state['open_questions'])}", ""]
+    return "\n".join(lines)
 
+
+def report(slug: str) -> str:
+    """Write the requirements document to out/ (command-line use)."""
+    state = load_state(slug)
+    OUT_DIR.mkdir(exist_ok=True)
+    markdown = build_report(state)
     md_path = OUT_DIR / f"{slug}-requirements.md"
     json_path = OUT_DIR / f"{slug}-requirements.json"
-    markdown = "\n".join(lines)
     md_path.write_text(markdown, encoding="utf-8")
     json_path.write_text(
         json.dumps(state, indent=2, ensure_ascii=False), encoding="utf-8"
@@ -382,7 +389,7 @@ def review(slug: str) -> None:
 
 def start(name: str, check: bool, audience: str) -> None:
     slug = slugify(name)
-    if state_path(slug).exists():
+    if state_exists(slug):
         sys.exit(f"'{slug}' already exists. Use: python interview.py resume {slug}")
     state = {
         "name": name,
@@ -431,8 +438,8 @@ def main() -> None:
     elif args.command == "report":
         report(args.slug)
     else:
-        for path in sorted(STATE_DIR.glob("*.json")) if STATE_DIR.exists() else []:
-            print(path.stem)
+        for item in list_states():
+            print(item["slug"])
 
 
 if __name__ == "__main__":

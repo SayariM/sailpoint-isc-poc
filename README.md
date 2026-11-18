@@ -31,10 +31,38 @@ streamlit run app.py
 Drop reference documents into `docs/` (PDF, Markdown, JSON, XML). The index
 builds automatically the first time the docs explainer is used.
 
+## Permanent storage
+
+Accounts, saved progress and every application live in one database:
+
+- **Default:** a local SQLite file, `state/app.db`. Good for running on your own machine.
+  Data left over from older versions (`state/*.json`, `state/users.db`) is imported
+  automatically the first time.
+- **Hosted Postgres (recommended for Streamlit Cloud):** set `DATABASE_URL` and the same
+  code stores everything there, so nothing is lost when the app restarts or redeploys.
+
+Setting up a hosted database (Supabase or Neon, both have free tiers):
+
+1. Create a project, then copy its **connection string** (Postgres URI), e.g.
+   `postgresql://user:password@host:5432/dbname`. For Supabase use the *pooler* /
+   "Transaction" string if the direct host does not resolve from Streamlit Cloud.
+2. Add it to the Streamlit secrets (or `.env` to try it locally):
+   ```toml
+   DATABASE_URL = "postgresql://user:password@host:5432/dbname"
+   ```
+3. Tables are created automatically on first start. To copy your existing local data
+   into it, run `python migrate_to_db.py` once with `DATABASE_URL` set. It is safe to
+   repeat and never overwrites rows that already exist.
+
+If `DATABASE_URL` is wrong or the database is down, the app says so instead of
+silently falling back to temporary storage. The database holds client information, so
+use a provider and region your organisation approves, and keep the connection string
+in secrets only. **Back up this intake** still gives each user a personal copy.
+
 ## Accounts and access
 
 Users sign in with a **User ID and password** (create one on the **Create account** tab).
-Passwords are stored as salted scrypt hashes in `state/users.db`, and five wrong
+Passwords are stored as salted scrypt hashes in the database, and five wrong
 attempts lock a User ID for five minutes.
 
 | Role | Sees | Can |
@@ -52,9 +80,8 @@ attempts lock a User ID for five minutes.
   `ADMIN_PASSWORD` (not inside the app). `ADMIN_USER_IDS` (comma-separated) instead lets
   those User IDs become admins when they register themselves. If the admin sign-in is
   refused on a hosted app, check the app logs for a line starting `[auth]`.
-- On Streamlit Community Cloud the disk is temporary, so accounts and intakes are lost
-  when the app restarts. Use **Back up this intake** regularly, and move to a hosted
-  database before real use.
+- Without `DATABASE_URL`, hosts with a temporary disk (such as Streamlit Community Cloud)
+  lose accounts and intakes whenever the app restarts. See **Permanent storage** above.
 
 ## Saving and resuming
 
@@ -79,5 +106,6 @@ can edit it, then **Save** and submit from **Review & export**.
 ## Notes
 
 - Embeddings run locally; only retrieved excerpts are sent to the language model.
-- Server storage is temporary. Use **Back up this intake** to keep a copy, and
-  **Restore from a saved file** to resume.
+- Set `DATABASE_URL` to keep data across restarts. Without it, data is stored in a local
+  file. **Back up this intake** and **Restore from a saved file** give each user a
+  personal copy either way.
