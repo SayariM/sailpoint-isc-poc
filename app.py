@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import html
 import json
 import os
 from datetime import datetime, timezone
@@ -54,62 +55,139 @@ else:
 
 st.html("""
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
   :root {
     --kpmg-blue: #00338D; --kpmg-mid: #005EB8; --kpmg-light: #0091DA;
     --kpmg-tint: #EAF1FB; --kpmg-line: #D3E0F3; --kpmg-ink: #0B1F3A;
   }
+  html, body, [class*="st-"]:not([data-testid="stIconMaterial"]), .stApp {
+    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  }
+  .stApp { background: linear-gradient(180deg, #F3F7FD 0%, #FFFFFF 380px); }
   .block-container { padding-top: 1.2rem; max-width: 1480px; }
   header[data-testid="stHeader"] { background: transparent; }
   div[data-testid="stColumn"]:has(.chat-anchor) {
     position: sticky; top: 3.5rem; align-self: flex-start;
   }
   h1, h2, h3 { letter-spacing: -0.01em; color: var(--kpmg-blue); }
-  div[data-testid="stSidebar"] { border-right: 1px solid var(--kpmg-line); }
+
+  /* sidebar */
+  div[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #E4EEFB 0%, #F3F7FD 100%);
+    border-right: 1px solid var(--kpmg-line);
+  }
   div[data-testid="stSidebarUserContent"] { padding-top: 1.2rem; }
   div[data-testid="stSidebar"] h3 {
     border-bottom: 3px solid var(--kpmg-light); padding-bottom: 0.35rem;
   }
+  div[data-testid="stSidebar"] div[role="radiogroup"] label {
+    padding: 0.32rem 0.6rem; border-radius: 8px; border-left: 3px solid transparent;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  div[data-testid="stSidebar"] div[role="radiogroup"] label:hover { background: rgba(0, 94, 184, 0.09); }
+  div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
+    background: #fff; border-left-color: var(--kpmg-mid); font-weight: 600;
+    box-shadow: 0 1px 3px rgba(0, 51, 141, 0.12);
+  }
+
+  /* cards */
   div[data-testid="stVerticalBlockBorderWrapper"] {
-    border-radius: 12px; border-color: var(--kpmg-line);
-    box-shadow: 0 1px 3px rgba(0, 51, 141, 0.07);
+    border-radius: 14px; border-color: var(--kpmg-line); background: #fff;
+    box-shadow: 0 1px 3px rgba(0, 51, 141, 0.06), 0 6px 18px rgba(0, 51, 141, 0.04);
+    transition: box-shadow 0.2s, border-color 0.2s;
   }
+  div[data-testid="stVerticalBlockBorderWrapper"]:hover {
+    border-color: #9DBBE6; box-shadow: 0 2px 6px rgba(0, 51, 141, 0.08), 0 10px 26px rgba(0, 51, 141, 0.08);
+  }
+
+  /* inputs */
+  div[data-baseweb="textarea"], div[data-baseweb="input"], div[data-baseweb="select"] > div {
+    background: #fff !important; border-radius: 10px !important;
+  }
+  div[data-baseweb="textarea"], div[data-baseweb="input"] { border: 1px solid #B9CDEB !important; }
+  div[data-baseweb="textarea"]:focus-within, div[data-baseweb="input"]:focus-within {
+    border-color: var(--kpmg-mid) !important; box-shadow: 0 0 0 3px rgba(0, 94, 184, 0.15);
+  }
+  textarea { background: #fff !important; }
+
+  /* hero */
   .hero {
+    position: relative; overflow: hidden;
     background: linear-gradient(110deg, var(--kpmg-blue) 0%, var(--kpmg-mid) 62%, var(--kpmg-light) 100%);
-    border-radius: 14px; padding: 1.1rem 1.6rem; margin-bottom: 1.3rem;
+    border-radius: 16px; padding: 1.2rem 1.7rem; margin-bottom: 1.4rem;
     display: flex; align-items: center; gap: 1.4rem;
-    box-shadow: 0 4px 14px rgba(0, 51, 141, 0.22);
+    box-shadow: 0 6px 20px rgba(0, 51, 141, 0.25);
   }
+  .hero::before, .hero::after {
+    content: ""; position: absolute; border-radius: 50%; background: rgba(255, 255, 255, 0.07);
+  }
+  .hero::before { width: 260px; height: 260px; right: -60px; top: -120px; }
+  .hero::after { width: 160px; height: 160px; right: 150px; bottom: -100px; background: rgba(255, 255, 255, 0.05); }
+  .hero > * { position: relative; z-index: 1; }
   .hero .brand {
     display: flex; align-items: center; padding-right: 1.4rem;
     border-right: 1px solid rgba(255, 255, 255, 0.45);
   }
-  .hero .brand img { height: 64px; width: 64px; border-radius: 12px; display: block; }
+  .hero .brand img { height: 64px; width: 64px; border-radius: 14px; display: block; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25); }
   .hero .brand .wordmark {
     font-family: Georgia, "Times New Roman", serif; font-style: italic; font-weight: 700;
     font-size: 1.9rem; letter-spacing: 0.02em; color: #fff;
   }
-  .hero .heading { color: #fff; font-size: 1.25rem; font-weight: 650; line-height: 1.2; }
-  .hero .sub { color: rgba(255, 255, 255, 0.85); font-size: 0.88rem; margin-top: 0.15rem; }
+  .hero .heading { color: #fff; font-size: 1.3rem; font-weight: 700; line-height: 1.2; }
+  .hero .sub { color: rgba(255, 255, 255, 0.85); font-size: 0.88rem; margin-top: 0.2rem; }
+
+  /* page header */
+  .pagehead { display: flex; align-items: center; flex-wrap: wrap; gap: 0.6rem 0.9rem; margin: 0.2rem 0 0.4rem 0; }
+  .pagehead h1 { margin: 0; padding: 0; font-size: 2.1rem; font-weight: 700; color: var(--kpmg-ink); }
+  .chip {
+    display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.78rem; font-weight: 600;
+    padding: 0.22rem 0.75rem; border-radius: 999px; background: var(--kpmg-tint); color: var(--kpmg-mid);
+    border: 1px solid var(--kpmg-line);
+  }
+  .chip.done { background: #E3F4EA; color: #17673A; border-color: #BFE3CD; }
+  h3.sectiontitle {
+    display: flex; align-items: center; gap: 0.6rem; margin: 0.8rem 0 0.2rem 0; font-size: 1.45rem;
+  }
+  h3.sectiontitle::before {
+    content: ""; width: 5px; height: 1.5rem; border-radius: 3px;
+    background: linear-gradient(180deg, var(--kpmg-light), var(--kpmg-blue));
+  }
+
+  /* questions */
   .qnum {
     display: inline-block; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em;
-    color: var(--kpmg-mid); background: var(--kpmg-tint); border-radius: 999px;
-    padding: 0.12rem 0.65rem; text-transform: uppercase; margin-bottom: 0.3rem;
+    color: #fff; background: linear-gradient(135deg, var(--kpmg-blue), var(--kpmg-mid)); border-radius: 999px;
+    padding: 0.15rem 0.7rem; text-transform: uppercase; margin-bottom: 0.35rem;
   }
-  .qtext { font-size: 1.02rem; font-weight: 600; line-height: 1.45; margin: 0 0 0.15rem 0; color: var(--kpmg-ink); }
+  .qtext { font-size: 1.05rem; font-weight: 600; line-height: 1.45; margin: 0 0 0.15rem 0; color: var(--kpmg-ink); }
   .req { color: var(--kpmg-light); margin-left: 0.25rem; }
-  .sectionblurb { color: #4A5F7D; font-size: 0.94rem; margin: -0.4rem 0 1.1rem 0; }
+  .sectionblurb { color: #4A5F7D; font-size: 0.95rem; margin: 0 0 1.2rem 0; }
   .navrow { border-top: 1px solid var(--kpmg-line); margin-top: 1.4rem; padding-top: 0.2rem; }
-  div[data-testid="stButton"] button, div[data-testid="stDownloadButton"] button { border-radius: 8px; font-weight: 600; }
+
+  /* buttons and widgets */
+  div[data-testid="stButton"] button, div[data-testid="stDownloadButton"] button {
+    border-radius: 10px; font-weight: 600; transition: transform 0.12s, box-shadow 0.12s, border-color 0.12s;
+  }
+  div[data-testid="stButton"] button p { white-space: normal; line-height: 1.25; }
+  div[data-testid="stButton"] button:hover, div[data-testid="stDownloadButton"] button:hover {
+    transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0, 51, 141, 0.18); border-color: var(--kpmg-mid);
+  }
   div[data-testid="stButton"] button[kind="primary"],
   div[data-testid="stDownloadButton"] button[kind="primary"] {
-    background: linear-gradient(135deg, var(--kpmg-blue), var(--kpmg-mid)); border: none;
+    background: linear-gradient(135deg, var(--kpmg-blue), var(--kpmg-mid)); border: none; color: #fff;
   }
   div[data-testid="stMetric"] {
-    background: var(--kpmg-tint); border-radius: 10px; padding: 0.7rem 0.9rem;
-    border-left: 4px solid var(--kpmg-mid);
+    background: #fff; border-radius: 12px; padding: 0.8rem 1rem;
+    border: 1px solid var(--kpmg-line); border-left: 5px solid var(--kpmg-mid);
+    box-shadow: 0 1px 3px rgba(0, 51, 141, 0.06);
   }
-  div[data-testid="stChatMessage"] { border-radius: 12px; }
-  div[data-testid="stProgress"] div[role="progressbar"] > div { background: var(--kpmg-light); }
+  div[data-testid="stChatMessage"] { border-radius: 14px; background: var(--kpmg-tint); }
+  div[data-testid="stProgress"] div[role="progressbar"] { background: var(--kpmg-line); border-radius: 999px; }
+  div[data-testid="stProgress"] div[role="progressbar"] > div {
+    background: linear-gradient(90deg, var(--kpmg-mid), var(--kpmg-light)); border-radius: 999px;
+  }
+  div[data-testid="stExpander"] { border-radius: 12px; border-color: var(--kpmg-line); background: #fff; }
+  div[data-testid="stChatInput"] { border-radius: 14px; }
 </style>
 <div class="hero">
   <div class="brand">__BRAND__</div>
@@ -259,10 +337,9 @@ def question_block(slot: dict[str, Any], state: dict[str, Any], number: int) -> 
         else:
             render_input(slot, state)
 
-        left, right = st.columns([3, 2])
-        with left:
-            st.checkbox("I don't know — flag for follow-up", key=unknown_key, value=is_open)
-        with right:
+        st.checkbox("I don't know — flag for follow-up", key=unknown_key, value=is_open)
+        agent_col, docs_col = st.columns(2)
+        with agent_col:
             if st.button(
                 ":material/smart_toy: Take help from Agent to know more",
                 key=f"ag_{slot['id']}",
@@ -273,6 +350,7 @@ def question_block(slot: dict[str, Any], state: dict[str, Any], number: int) -> 
                     f"Explain question {number} in plain language, using the ISC docs, "
                     "and tell me what a good answer looks like. Then offer to draft it for me."
                 )
+        with docs_col:
             # Deliberately not inside a popover: the click reruns the script and would
             # close it before the answer could render.
             if st.button(
@@ -419,7 +497,7 @@ def chat_panel(state: dict[str, Any], audience: str, page: str) -> None:
     slots = [] if on_review else slots_for(state, audience, page)
 
     title, clear = st.columns([3, 1])
-    title.subheader("Ask Agent")
+    title.html('<h3 class="sectiontitle" style="margin-top:0.2rem;white-space:nowrap">Ask Agent</h3>')
     if clear.button("Clear", key=f"clr_{slug}", disabled=not history):
         history.clear()
         st.rerun()
@@ -589,8 +667,19 @@ with chat_col:
     st.html('<div class="chat-anchor"></div>')
 
 with main_col:
-    st.title(state["name"])
-
+    if page == REVIEW:
+        step_chip = f'<span class="chip">Final step · {len(pages)} of {len(pages)}</span>'
+    else:
+        resolved, count = counts[page]
+        step_chip = (
+            f'<span class="chip">Section {nav + 1} of {len(pages) - 1}</span>'
+            f'<span class="chip{" done" if resolved == count else ""}">'
+            f"{'✓ ' if resolved == count else ''}{resolved}/{count} answered</span>"
+        )
+    st.html(
+        f'<div class="pagehead"><h1>{html.escape(state["name"])}</h1>{step_chip}'
+        f'<span class="chip">{done} of {total} overall</span></div>'
+    )
     if page == REVIEW:
         st.caption("Everything captured so far, and what is still outstanding.")
         markdown = interview.report(state["slug"])
@@ -671,7 +760,7 @@ with main_col:
             goto(nav - 1)
     else:
         section = SECTIONS[page]
-        st.subheader(section["name"])
+        st.html(f'<h3 class="sectiontitle">{html.escape(section["name"])}</h3>')
         if section.get("blurb"):
             st.html(f'<p class="sectionblurb">{section["blurb"]}</p>')
 
