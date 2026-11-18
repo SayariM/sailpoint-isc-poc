@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import base64
 import json
 import os
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 import streamlit as st
@@ -13,9 +15,11 @@ import assistant
 import excel_export
 import interview
 
+LOGO = Path(__file__).parent / "assets" / "logo.png"
+
 st.set_page_config(
     page_title="KPMG | ISC Source Onboarding",
-    page_icon=":material/hub:",
+    page_icon=str(LOGO) if LOGO.exists() else ":material/hub:",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -38,6 +42,15 @@ try:  # hosted platforms supply the key as a secret rather than a .env file
             os.environ[name] = st.secrets[name]
 except Exception as exc:
     SECRET_ERROR = f"{type(exc).__name__}: {exc}"
+
+if LOGO.exists():
+    BRAND_HTML = (
+        '<img alt="KPMG" src="data:image/png;base64,'
+        + base64.b64encode(LOGO.read_bytes()).decode()
+        + '">'
+    )
+else:
+    BRAND_HTML = '<span class="wordmark">KPMG</span>'
 
 st.html("""
 <style>
@@ -67,9 +80,13 @@ st.html("""
     box-shadow: 0 4px 14px rgba(0, 51, 141, 0.22);
   }
   .hero .brand {
+    display: flex; align-items: center; padding-right: 1.4rem;
+    border-right: 1px solid rgba(255, 255, 255, 0.45);
+  }
+  .hero .brand img { height: 64px; width: 64px; border-radius: 12px; display: block; }
+  .hero .brand .wordmark {
     font-family: Georgia, "Times New Roman", serif; font-style: italic; font-weight: 700;
     font-size: 1.9rem; letter-spacing: 0.02em; color: #fff;
-    padding-right: 1.4rem; border-right: 1px solid rgba(255, 255, 255, 0.45);
   }
   .hero .heading { color: #fff; font-size: 1.25rem; font-weight: 650; line-height: 1.2; }
   .hero .sub { color: rgba(255, 255, 255, 0.85); font-size: 0.88rem; margin-top: 0.15rem; }
@@ -95,13 +112,13 @@ st.html("""
   div[data-testid="stProgress"] div[role="progressbar"] > div { background: var(--kpmg-light); }
 </style>
 <div class="hero">
-  <div class="brand">KPMG</div>
+  <div class="brand">__BRAND__</div>
   <div>
     <div class="heading">SailPoint ISC Source Onboarding</div>
     <div class="sub">Identity Security Cloud intake, guided by the ISC Ask Agent</div>
   </div>
 </div>
-""")
+""".replace("__BRAND__", BRAND_HTML))
 
 
 @st.cache_resource(show_spinner=False)
